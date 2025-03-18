@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48px" height="48px" viewBox="0 0 48 48" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>icon48</title>
+    <g id="icon48" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Rectangle" fill="#F86527" x="0" y="0" width="48" height="48" rx="7"></rect>
+        <g id="Group" transform="translate(8, 9)" fill="#FFFFFF" fill-rule="nonzero">
+            <polygon id="Path" points="7.56596353 2 16 5.01601164 14.4340365 9 6 5.98398836"></polygon>
+            <polygon id="Path" points="21.2263479 0 24 8.61439313 19.7736521 10 17 1.38560687 21.2263479 7.95003956e-16"></polygon>
+            <polygon id="Path" points="31 10.4625268 25.8592593 18 22 15.5374732 27.1407407 8"></polygon>
+            <polygon id="Path" points="28 23.2305085 19.3844394 24 19 19.7694915 27.6155606 19 28 23.2305085"></polygon>
+            <polygon id="Path" points="16.929652 31 11 24.2145509 14.070348 21 20 27.7854491"></polygon>
+            <polygon id="Path" points="4 25.4347664 5.28761905 17 10 17.5652336 8.71238095 26 4 25.4347664"></polygon>
+            <polygon id="Path" points="4.75300617e-16 12.3758955 7.71673207 8 10 11.6241045 2.28326793 16 0 12.3758955"></polygon>
+        </g>
+    </g>
+</svg>
