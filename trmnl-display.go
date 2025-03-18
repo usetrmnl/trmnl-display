@@ -7,15 +7,17 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	_ "image/jpeg"             // Register JPEG decoder
-	_ "image/png"              // Register PNG decoder
-	_ "golang.org/x/image/bmp" // Register BMP decoder
+	_ "image/jpeg" // Register JPEG decoder
+	_ "image/png"  // Register PNG decoder
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"time"
+
+	_ "golang.org/x/image/bmp" // Register BMP decoder
 
 	imagedraw "golang.org/x/image/draw"
 
@@ -40,6 +42,9 @@ type AppOptions struct {
 }
 
 func main() {
+	// Check root privileges
+	checkRoot()
+
 	// Parse command line arguments
 	options := parseCommandLineArgs()
 
@@ -91,11 +96,28 @@ func main() {
 	}
 }
 
+// checkRoot verifies if the program is running with root privileges
+func checkRoot() {
+    currentUser, err := user.Current()
+    if err != nil {
+        fmt.Printf("Error determining current user: %v\n", err)
+        os.Exit(1)
+    }
+
+    if currentUser.Uid != "0" {
+        fmt.Println("This program requires root privileges to access the framebuffer.")
+        fmt.Println("Please run with sudo or as root.")
+        os.Exit(1)
+    }
+
+    fmt.Println("Running with root privileges ✓")
+}
+
 // parseCommandLineArgs parses command line arguments and returns app options
 func parseCommandLineArgs() AppOptions {
 	darkMode := flag.Bool("d", false, "Enable dark mode (invert 1-bit BMP images)")
 	flag.Parse()
-	
+
 	return AppOptions{
 		DarkMode: *darkMode,
 	}
@@ -341,14 +363,14 @@ func decodeCustomBMP(file *os.File, darkMode bool) (image.Image, error) {
 				{255, 255, 255, 255},
 			}
 		}
-		
+
 		// Apply dark mode inversion to 1-bit BMPs if enabled
 		if darkMode && bitsPerPixel == 1 && len(palette) == 2 {
 			fmt.Println("Applying dark mode inversion to 1-bit BMP")
 			// Swap the colors in the palette
 			palette[0], palette[1] = palette[1], palette[0]
 		}
-		
+
 		fmt.Printf("Palette: %v\n", palette)
 	}
 
