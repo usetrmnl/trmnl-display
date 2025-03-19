@@ -22,7 +22,7 @@ TRMNL Display is a lightweight, terminal-based application designed to display d
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/trmnl-display.git
+git clone https://github.com/usetrmnl/trmnl-display.git
 cd trmnl-display
 ```
 
