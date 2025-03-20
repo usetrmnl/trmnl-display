@@ -67,35 +67,37 @@ for target in "${!targets[@]}"; do
     unset GOARM
   fi
 
-  # Set CGO environment variables
+  # Enable CGO and set CC for cross-compilation
   export CGO_ENABLED=1
-  if [[ -n "$CC" ]]; then
-    export CC=$CC
-  fi
+  export CC=$CC
 
-  echo "Building $BIN_NAME with GOARCH=$GOARCH GOARM=$GOARM CC=$CC"
+  echo "Building $BIN_NAME with GOARCH=$GOARCH GOARM=$GOARM CC=$CC (statically linked)"
 
-  # Try building with different approaches
-  if go build -o "$BUILD_DIR/$BIN_NAME" ./trmnl-display.go; then
-    echo "Build successful for $BIN_NAME"
+  # Attempt static linking explicitly
+  if go build -a -ldflags '-extldflags "-static"' -o "$BUILD_DIR/$BIN_NAME" ./trmnl-display.go; then
+    echo "Static build successful for $BIN_NAME"
   else
-    echo "Standard build failed, trying with build tags..."
-    if go build -tags=linux -o "$BUILD_DIR/$BIN_NAME" ./trmnl-display.go; then
-      echo "Build with tags successful for $BIN_NAME"
+    echo "Static build failed, attempting fallback without static flags..."
+    if go build -o "$BUILD_DIR/$BIN_NAME" ./trmnl-display.go; then
+      echo "Fallback build successful for $BIN_NAME (dynamic linking)"
     else
       echo "Failed to build for $target"
       continue
     fi
   fi
 
-  # Make sure the binary is executable
+  # Ensure binary is executable
   chmod +x "$BUILD_DIR/$BIN_NAME"
+
+  # Verify binary linkage
+  echo "Linkage type for $BIN_NAME:"
+  file "$BUILD_DIR/$BIN_NAME"
 
   # Upload to S3
   echo "Uploading $BIN_NAME to S3 bucket: $S3_BUCKET"
   aws s3 cp "$BUILD_DIR/$BIN_NAME" "s3://$S3_BUCKET/$BIN_NAME"
 
-  echo "Upload complete! Binary is now available at: $S3_URL/$BIN_NAME"
+  echo "Upload complete! Binary available at: $S3_URL/$BIN_NAME"
 done
 
 # Also build for x86_64 for completeness
