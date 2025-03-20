@@ -7,19 +7,28 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	_ "image/jpeg"             // Register JPEG decoder
-	_ "image/png"              // Register PNG decoder
-	_ "golang.org/x/image/bmp" // Register BMP decoder
+	_ "image/jpeg" // Register JPEG decoder
+	_ "image/png"  // Register PNG decoder
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"time"
+
+	_ "golang.org/x/image/bmp" // Register BMP decoder
 
 	imagedraw "golang.org/x/image/draw"
 
 	"github.com/gonutz/framebuffer"
+)
+
+// Version information
+var (
+	version   = "0.1.0"
+	commit    = "unknown"
+	buildDate = "unknown"
 )
 
 // TerminalResponse represents the JSON structure returned by the API
@@ -40,6 +49,9 @@ type AppOptions struct {
 }
 
 func main() {
+	// Check root privileges
+	checkRoot()
+
 	// Parse command line arguments
 	options := parseCommandLineArgs()
 
@@ -91,11 +103,35 @@ func main() {
 	}
 }
 
+// checkRoot verifies if the program is running with root privileges
+func checkRoot() {
+	currentUser, err := user.Current()
+	if err != nil {
+		fmt.Printf("Error determining current user: %v\n", err)
+		os.Exit(1)
+	}
+
+	if currentUser.Uid != "0" {
+		fmt.Println("This program requires root privileges to access the framebuffer.")
+		fmt.Println("Please run with sudo or as root.")
+		os.Exit(1)
+	}
+
+	fmt.Println("Running with root privileges ✓")
+}
+
 // parseCommandLineArgs parses command line arguments and returns app options
 func parseCommandLineArgs() AppOptions {
 	darkMode := flag.Bool("d", false, "Enable dark mode (invert 1-bit BMP images)")
+	showVersion := flag.Bool("v", false, "Show version information")
 	flag.Parse()
-	
+
+	if *showVersion {
+		fmt.Printf("trmnl-display version %s (commit: %s, built: %s)\n",
+			version, commit, buildDate)
+		os.Exit(0)
+	}
+
 	return AppOptions{
 		DarkMode: *darkMode,
 	}
@@ -119,6 +155,7 @@ func processNextImage(tmpDir, apiKey string, options AppOptions) {
 	}
 
 	req.Header.Add("access-token", apiKey)
+	req.Header.Add("User-Agent", fmt.Sprintf("trmnl-display/%s", version))
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
@@ -321,7 +358,7 @@ func decodeCustomBMP(file *os.File, darkMode bool) (image.Image, error) {
 	// Create a new RGBA image
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	// Calculate row padding (BMP rows are aligned to 4 bytes)
-	rowSize := ((width * bitsPerPixel + 31) / 32) * 4
+	rowSize := ((width*bitsPerPixel + 31) / 32) * 4
 
 	// For 1-bit (and other indexed) BMPs, read the colour palette
 	var palette []color.RGBA
@@ -341,14 +378,14 @@ func decodeCustomBMP(file *os.File, darkMode bool) (image.Image, error) {
 				{255, 255, 255, 255},
 			}
 		}
-		
+
 		// Apply dark mode inversion to 1-bit BMPs if enabled
 		if darkMode && bitsPerPixel == 1 && len(palette) == 2 {
 			fmt.Println("Applying dark mode inversion to 1-bit BMP")
 			// Swap the colors in the palette
 			palette[0], palette[1] = palette[1], palette[0]
 		}
-		
+
 		fmt.Printf("Palette: %v\n", palette)
 	}
 
@@ -382,9 +419,9 @@ func decodeCustomBMP(file *os.File, darkMode bool) (image.Image, error) {
 					continue
 				}
 				value := uint16(data[pos]) | uint16(data[pos+1])<<8
-				r := uint8((value >> 11) & 0x1F) << 3
-				g := uint8((value >> 5) & 0x3F) << 2
-				b := uint8(value & 0x1F) << 3
+				r := uint8((value>>11)&0x1F) << 3
+				g := uint8((value>>5)&0x3F) << 2
+				b := uint8(value&0x1F) << 3
 				col = color.RGBA{r, g, b, 255}
 			case 8:
 				pos := dataOffset + srcY*rowSize + x

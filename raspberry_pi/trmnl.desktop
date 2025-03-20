@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=TRMNL
+Comment=Run TRMNL Display
+Exec=lxterminal -e "bash -c 'sudo /usr/local/bin/trmnl-display; exec bash'"
+Icon=/usr/share/pixmaps/trmnl.svg
+Terminal=true
+Type=Application
+Categories=Utility;
