@@ -13,8 +13,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"os/user"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
 	_ "golang.org/x/image/bmp" // Register BMP decoder
@@ -46,7 +50,17 @@ type Config struct {
 // AppOptions holds command line options
 type AppOptions struct {
 	DarkMode bool
+	Verbose  bool
 }
+
+// FramebufferLock represents the lock file structure
+type FramebufferLock struct {
+	LockPath string
+	Acquired bool
+}
+
+// Global lock variable for cleanup
+var fbLock *FramebufferLock
 
 func main() {
 	// Check root privileges
@@ -55,13 +69,18 @@ func main() {
 	// Parse command line arguments
 	options := parseCommandLineArgs()
 
+	// Set up signal handling for clean exit
+	setupSignalHandling()
+
 	// Check the environment first
-	fmt.Println("Checking system environment...")
-	if options.DarkMode {
-		fmt.Println("Dark mode enabled - 1-bit BMP images will be inverted")
+	if options.Verbose {
+		fmt.Println("Checking system environment...")
+		if options.DarkMode {
+			fmt.Println("Dark mode enabled - 1-bit BMP images will be inverted")
+		}
+		checkDisplayServer()
+		listFramebufferDevices()
 	}
-	checkDisplayServer()
-	listFramebufferDevices()
 
 	// Create a configuration directory
 	configDir, err := os.UserHomeDir()
@@ -98,8 +117,141 @@ func main() {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	// Create and acquire framebuffer lock
+	fbLock = NewFramebufferLock("/var/lock/trmnl-display.lock")
+	err = fbLock.Acquire()
+	if err != nil {
+		fmt.Printf("Error acquiring framebuffer lock: %v\n", err)
+		os.Exit(1)
+	}
+	defer fbLock.Release()
+
 	for {
 		processNextImage(tmpDir, config.APIKey, options)
+	}
+}
+
+// NewFramebufferLock creates a new framebuffer lock
+func NewFramebufferLock(lockPath string) *FramebufferLock {
+	return &FramebufferLock{
+		LockPath: lockPath,
+		Acquired: false,
+	}
+}
+
+// Acquire attempts to acquire the framebuffer lock
+func (l *FramebufferLock) Acquire() error {
+	// First check if the lock file exists
+	if _, err := os.Stat(l.LockPath); err == nil {
+		// Lock file exists, check if it's stale
+		pid, err := l.readLockFile()
+		if err != nil {
+			return fmt.Errorf("error reading lock file: %v", err)
+		}
+
+		// Check if the process is still running
+		if l.isProcessRunning(pid) {
+			return fmt.Errorf("framebuffer is currently in use by process %d", pid)
+		}
+
+		// Lock is stale, remove it
+		fmt.Printf("Removing stale lock from PID %d\n", pid)
+		if err := os.Remove(l.LockPath); err != nil {
+			return fmt.Errorf("error removing stale lock file: %v", err)
+		}
+	}
+
+	// Create the lock file with current PID
+	if err := l.writeLockFile(); err != nil {
+		return fmt.Errorf("error creating lock file: %v", err)
+	}
+
+	l.Acquired = true
+	fmt.Println("Acquired exclusive framebuffer access")
+	return nil
+}
+
+// Release releases the framebuffer lock
+func (l *FramebufferLock) Release() {
+	if l.Acquired {
+		if err := os.Remove(l.LockPath); err != nil {
+			fmt.Printf("Error removing lock file: %v\n", err)
+		} else {
+			fmt.Println("Released framebuffer lock")
+			l.Acquired = false
+		}
+	}
+}
+
+// readLockFile reads the PID from the lock file
+func (l *FramebufferLock) readLockFile() (int, error) {
+	data, err := os.ReadFile(l.LockPath)
+	if err != nil {
+		return 0, err
+	}
+
+	pidStr := strings.TrimSpace(string(data))
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid PID in lock file: %v", err)
+	}
+
+	return pid, nil
+}
+
+// writeLockFile writes the current PID to the lock file
+func (l *FramebufferLock) writeLockFile() error {
+	pid := os.Getpid()
+	return os.WriteFile(l.LockPath, []byte(fmt.Sprintf("%d", pid)), 0644)
+}
+
+// isProcessRunning checks if a process with the given PID is running
+func (l *FramebufferLock) isProcessRunning(pid int) bool {
+	// Try to find the process
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false // Can't find process, must not be running
+	}
+
+	// On Unix, FindProcess always succeeds, so we need to send a signal
+	// to check if the process actually exists
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
+}
+
+// setupSignalHandling sets up handlers for SIGINT, SIGTERM, and SIGHUP
+func setupSignalHandling() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		<-c
+		fmt.Println("\nReceived termination signal. Cleaning up...")
+		if fbLock != nil {
+			fbLock.Release()
+		}
+		clearFramebuffer()
+		os.Exit(0)
+	}()
+}
+
+// clearFramebuffer fills the framebuffer with black to clear it
+func clearFramebuffer() {
+	fmt.Println("Clearing framebuffer...")
+
+	fb, err := framebuffer.Open("/dev/fb0")
+	if err != nil {
+		fmt.Printf("Error opening framebuffer to clear: %v\n", err)
+		return
+	}
+	defer fb.Close()
+
+	// Create a black image
+	black := image.NewRGBA(fb.Bounds())
+	draw.Draw(fb, fb.Bounds(), black, image.Point{}, draw.Src)
+
+	// Flush the framebuffer if necessary
+	if fbFlusher, ok := interface{}(fb).(interface{ Flush() error }); ok {
+		fbFlusher.Flush()
 	}
 }
 
@@ -124,6 +276,8 @@ func checkRoot() {
 func parseCommandLineArgs() AppOptions {
 	darkMode := flag.Bool("d", false, "Enable dark mode (invert 1-bit BMP images)")
 	showVersion := flag.Bool("v", false, "Show version information")
+	verbose := flag.Bool("verbose", true, "Enable verbose output")
+	quiet := flag.Bool("q", false, "Quiet mode (disable verbose output)")
 	flag.Parse()
 
 	if *showVersion {
@@ -134,6 +288,7 @@ func parseCommandLineArgs() AppOptions {
 
 	return AppOptions{
 		DarkMode: *darkMode,
+		Verbose:  *verbose && !*quiet,
 	}
 }
 
@@ -244,14 +399,18 @@ func displayImage(imagePath string, options AppOptions) error {
 	}
 	defer file.Close()
 
-	fmt.Printf("Reading image from %s\n", imagePath)
+	if options.Verbose {
+		fmt.Printf("Reading image from %s\n", imagePath)
+	}
 
 	// Get image format
 	format, err := getImageFormat(file)
 	if err != nil {
 		return fmt.Errorf("error determining image format: %v", err)
 	}
-	fmt.Printf("Detected image format: %s\n", format)
+	if options.Verbose {
+		fmt.Printf("Detected image format: %s\n", format)
+	}
 
 	// Reset file position after checking format
 	file.Seek(0, 0)
@@ -261,18 +420,27 @@ func displayImage(imagePath string, options AppOptions) error {
 	img, format, err = image.Decode(file)
 	// If standard decoding fails for BMP, try our custom decoder
 	if err != nil && format == "bmp" {
-		fmt.Printf("Standard BMP decoder failed: %v\n", err)
-		fmt.Printf("Trying custom BMP decoder...\n")
+		if options.Verbose {
+			fmt.Printf("Standard BMP decoder failed: %v\n", err)
+			fmt.Printf("Trying custom BMP decoder...\n")
+		}
 		file.Seek(0, 0)
 		img, err = decodeCustomBMP(file, options.DarkMode)
 		if err != nil {
 			return fmt.Errorf("both standard and custom BMP decoders failed: %v", err)
 		}
-		fmt.Printf("Successfully decoded image with custom BMP decoder\n")
+		if options.Verbose {
+			fmt.Printf("Successfully decoded image with custom BMP decoder\n")
+		}
 	} else if err != nil {
 		return fmt.Errorf("error decoding image format '%s': %v", format, err)
-	} else {
+	} else if options.Verbose {
 		fmt.Printf("Successfully decoded image as %s\n", format)
+	}
+
+	// Verify we still have the lock before proceeding
+	if fbLock != nil && !fbLock.Acquired {
+		return fmt.Errorf("lost framebuffer lock, cannot continue")
 	}
 
 	// Switch to tty1 so the framebuffer becomes active
@@ -290,7 +458,9 @@ func displayImage(imagePath string, options AppOptions) error {
 
 	// Get framebuffer bounds
 	fbBounds := fb.Bounds()
-	fmt.Printf("Framebuffer bounds: %v\n", fbBounds)
+	if options.Verbose {
+		fmt.Printf("Framebuffer bounds: %v\n", fbBounds)
+	}
 
 	// Scale the image to fill the entire framebuffer
 	targetRect := fbBounds
@@ -305,7 +475,9 @@ func displayImage(imagePath string, options AppOptions) error {
 		fbFlusher.Flush()
 	}
 
-	fmt.Println("Image drawing completed (full screen)")
+	if options.Verbose {
+		fmt.Println("Image drawing completed (full screen)")
+	}
 	return nil
 }
 
