@@ -10,6 +10,7 @@ import (
 	_ "image/jpeg" // Register JPEG decoder
 	_ "image/png"  // Register PNG decoder
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,6 +21,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unsafe"
 
 	_ "golang.org/x/image/bmp" // Register BMP decoder
 
@@ -61,6 +63,63 @@ type FramebufferLock struct {
 
 // Global lock variable for cleanup
 var fbLock *FramebufferLock
+
+// Add this new function to disable the cursor
+func disableCursor() error {
+	// Method 1: Using the terminal settings
+	termios := syscall.Termios{
+		Iflag: 0,
+		Oflag: 0,
+		Cflag: 0,
+		Lflag: 0,
+	}
+
+	tty, err := os.OpenFile("/dev/tty1", os.O_RDWR, 0)
+	if err != nil {
+		return fmt.Errorf("error opening /dev/tty1: %v", err)
+	}
+	defer tty.Close()
+
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(&termios)))
+	if errno != 0 {
+		return fmt.Errorf("ioctl error: %v", errno)
+	}
+
+	// Method 2: Try to disable the cursor via escape sequence
+	_, err = tty.Write([]byte("\033[?25l"))
+	if err != nil {
+		return fmt.Errorf("error writing escape sequence: %v", err)
+	}
+
+	// Method 3: Use the console blinking cursor control
+	err = ioutil.WriteFile("/sys/class/graphics/fbcon/cursor_blink", []byte("0"), 0644)
+	if err != nil {
+		fmt.Printf("Warning: Failed to disable cursor blink via sysfs: %v\n", err)
+		// Not returning error as this is optional
+	}
+
+	// Method 4: Try to disable GPM mouse daemon if running
+	if _, err := os.Stat("/var/run/gpm.pid"); err == nil {
+		fmt.Println("GPM mouse daemon detected, attempting to disable it...")
+		exec.Command("sudo", "service", "gpm", "stop").Run()
+	}
+
+	return nil
+}
+
+func restoreCursor() {
+	tty, err := os.OpenFile("/dev/tty1", os.O_RDWR, 0)
+	if err != nil {
+		return
+	}
+	defer tty.Close()
+
+	// Re-enable cursor
+	tty.Write([]byte("\033[?25h"))
+
+	// Re-enable cursor blink
+	ioutil.WriteFile("/sys/class/graphics/fbcon/cursor_blink", []byte("1"), 0644)
+}
 
 func main() {
 	// Check root privileges
@@ -125,6 +184,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer fbLock.Release()
+
+	// Disable cursor
+	if err := disableCursor(); err != nil {
+		fmt.Printf("Warning: Failed to disable cursor: %v\n", err)
+		// Continue anyway, as this is not critical
+	}
 
 	// Clear the framebuffer at startup
 	clearFramebuffer()
@@ -233,6 +298,7 @@ func setupSignalHandling() {
 			fbLock.Release()
 		}
 		clearFramebuffer()
+		restoreCursor() // Restore cursor before exiting
 		os.Exit(0)
 	}()
 }
