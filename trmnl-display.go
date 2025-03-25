@@ -126,6 +126,9 @@ func main() {
 	}
 	defer fbLock.Release()
 
+	// Clear the framebuffer at startup
+	clearFramebuffer()
+
 	for {
 		processNextImage(tmpDir, config.APIKey, options)
 	}
