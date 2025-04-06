@@ -379,6 +379,8 @@ func processNextImage(tmpDir, apiKey string, options AppOptions) {
 	}
 
 	req.Header.Add("access-token", apiKey)
+	req.Header.Add("battery-voltage", "100.00")
+	req.Header.Add("rssi", "0")
 	req.Header.Add("User-Agent", fmt.Sprintf("trmnl-display/%s", version))
 	client := &http.Client{
 		Timeout: 30 * time.Second,
