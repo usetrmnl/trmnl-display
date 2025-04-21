@@ -371,7 +371,7 @@ func processNextImage(tmpDir, apiKey string, options AppOptions) {
 	}()
 
 	// Get the TRMNL display
-	req, err := http.NewRequest("GET", "https://usetrmnl.com/api/display", nil)
+	req, err := http.NewRequest("GET", "https://trmnl.app/api/display", nil)
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
 		time.Sleep(60 * time.Second)
