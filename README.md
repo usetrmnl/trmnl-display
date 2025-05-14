@@ -1,6 +1,6 @@
 # TRMNL Display
 
-TRMNL Display is a lightweight, terminal-based application designed to display dynamic images directly on framebuffer-enabled devices, such as Raspberry Pi. It fetches images from the TRMNL API and renders them directly to the framebuffer, providing a seamless display experience without requiring a traditional desktop environment.
+TRMNL Display is a lightweight, terminal-based application designed to display dynamic images directly on framebuffer-enabled devices, such as Raspberry Pi with HDMI displays. It fetches images from the TRMNL API and renders them directly to the framebuffer, providing a seamless display experience without requiring a traditional desktop environment. Note: This application does not work with e-paper displays unless a virtual framebuffer is configured.
 
 ## Features
 
@@ -15,6 +15,7 @@ TRMNL Display is a lightweight, terminal-based application designed to display d
 
 - Go 1.19 or higher
 - Framebuffer-enabled Linux device (e.g., Raspberry Pi)
+- HDMI display (e-paper displays are not supported without a virtual framebuffer)
 - Internet connection for fetching images
 
 ## Installation
