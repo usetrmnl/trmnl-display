@@ -183,8 +183,13 @@ func main() {
 
 	// If the API key is still not set, prompt the user
 	if config.APIKey == "" {
-		fmt.Println("TRMNL API Key not found.")
-		fmt.Print("Please enter your TRMNL API Key: ")
+		if strings.Contains(config.BaseURL, "trmnl.app") {
+			fmt.Println("TRMNL API Key not found.")
+			fmt.Print("Please enter your TRMNL API Key: ")
+		} else {
+			fmt.Println("Device ID not found.")
+			fmt.Print("Please enter your device MAC address (e.g., AA:BB:CC:DD:EE:FF): ")
+		}
 		fmt.Scanln(&config.APIKey)
 		saveConfig(configDir, config)
 	}
@@ -402,7 +407,16 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 		return
 	}
 
-	req.Header.Add("access-token", config.APIKey)
+	// Use different header based on server type
+	// For Terminus servers, use MAC address in ID header
+	// For standard TRMNL servers, use access-token
+	if strings.Contains(config.BaseURL, "trmnl.app") {
+		req.Header.Add("access-token", config.APIKey)
+	} else {
+		// For Terminus/BYOS servers, use ID header with MAC address
+		req.Header.Add("ID", config.APIKey)
+		req.Header.Add("Content-Type", "application/json")
+	}
 	req.Header.Add("battery-voltage", "100.00")
 	req.Header.Add("rssi", "0")
 	req.Header.Add("User-Agent", fmt.Sprintf("trmnl-display/%s", version))
