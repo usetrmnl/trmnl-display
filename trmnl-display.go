@@ -46,13 +46,15 @@ type TerminalResponse struct {
 
 // Config holds application configuration
 type Config struct {
-	APIKey string
+	APIKey  string `json:"api_key,omitempty"`
+	BaseURL string `json:"base_url,omitempty"`
 }
 
 // AppOptions holds command line options
 type AppOptions struct {
 	DarkMode bool
 	Verbose  bool
+	BaseURL  string
 }
 
 // FramebufferLock represents the lock file structure
@@ -154,10 +156,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get API key from environment, or from config file
+	// Get configuration from file
 	config := loadConfig(configDir)
-	if config.APIKey == "" {
-		config.APIKey = os.Getenv("TRMNL_API_KEY")
+
+	// Override with environment variables if present
+	if envAPIKey := os.Getenv("TRMNL_API_KEY"); envAPIKey != "" {
+		config.APIKey = envAPIKey
+	}
+	if envBaseURL := os.Getenv("TRMNL_BASE_URL"); envBaseURL != "" {
+		config.BaseURL = envBaseURL
+	}
+
+	// Override with command line argument if provided
+	if options.BaseURL != "" {
+		config.BaseURL = options.BaseURL
+	}
+
+	// Set default base URL if not configured
+	if config.BaseURL == "" {
+		config.BaseURL = "https://trmnl.app"
+	}
+
+	if options.Verbose {
+		fmt.Printf("Using base URL: %s\n", config.BaseURL)
 	}
 
 	// If the API key is still not set, prompt the user
@@ -195,7 +216,7 @@ func main() {
 	clearFramebuffer()
 
 	for {
-		processNextImage(tmpDir, config.APIKey, options)
+		processNextImage(tmpDir, config, options)
 	}
 }
 
@@ -347,6 +368,7 @@ func parseCommandLineArgs() AppOptions {
 	showVersion := flag.Bool("v", false, "Show version information")
 	verbose := flag.Bool("verbose", true, "Enable verbose output")
 	quiet := flag.Bool("q", false, "Quiet mode (disable verbose output)")
+	baseURL := flag.String("base-url", "", "Custom base URL for the TRMNL API (default: https://trmnl.app)")
 	flag.Parse()
 
 	if *showVersion {
@@ -358,10 +380,11 @@ func parseCommandLineArgs() AppOptions {
 	return AppOptions{
 		DarkMode: *darkMode,
 		Verbose:  *verbose && !*quiet,
+		BaseURL:  *baseURL,
 	}
 }
 
-func processNextImage(tmpDir, apiKey string, options AppOptions) {
+func processNextImage(tmpDir string, config Config, options AppOptions) {
 	// Use defer and recover to handle any panics
 	defer func() {
 		if r := recover(); r != nil {
@@ -371,14 +394,14 @@ func processNextImage(tmpDir, apiKey string, options AppOptions) {
 	}()
 
 	// Get the TRMNL display
-	req, err := http.NewRequest("GET", "https://trmnl.app/api/display", nil)
+	req, err := http.NewRequest("GET", config.BaseURL+"/api/display", nil)
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
 		time.Sleep(60 * time.Second)
 		return
 	}
 
-	req.Header.Add("access-token", apiKey)
+	req.Header.Add("access-token", config.APIKey)
 	req.Header.Add("battery-voltage", "100.00")
 	req.Header.Add("rssi", "0")
 	req.Header.Add("User-Agent", fmt.Sprintf("trmnl-display/%s", version))
