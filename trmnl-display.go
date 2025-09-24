@@ -434,6 +434,10 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	} else {
 		// For Terminus/BYOS servers, use ID header with MAC address
 		req.Header.Add("ID", config.DeviceID)
+		// Also add access-token for BYOS Laravel compatibility
+		if config.APIKey != "" {
+			req.Header.Add("access-token", config.APIKey)
+		}
 		req.Header.Add("Content-Type", "application/json")
 	}
 	req.Header.Add("battery-voltage", "100.00")
