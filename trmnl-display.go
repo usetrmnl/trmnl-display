@@ -46,8 +46,9 @@ type TerminalResponse struct {
 
 // Config holds application configuration
 type Config struct {
-	APIKey  string `json:"api_key,omitempty"`
-	BaseURL string `json:"base_url,omitempty"`
+	APIKey   string `json:"api_key,omitempty"`   // API key for trmnl.app
+	DeviceID string `json:"device_id,omitempty"` // Device ID (MAC address) for Terminus/BYOS servers
+	BaseURL  string `json:"base_url,omitempty"`
 }
 
 // AppOptions holds command line options
@@ -163,6 +164,9 @@ func main() {
 	if envAPIKey := os.Getenv("TRMNL_API_KEY"); envAPIKey != "" {
 		config.APIKey = envAPIKey
 	}
+	if envDeviceID := os.Getenv("TRMNL_DEVICE_ID"); envDeviceID != "" {
+		config.DeviceID = envDeviceID
+	}
 	if envBaseURL := os.Getenv("TRMNL_BASE_URL"); envBaseURL != "" {
 		config.BaseURL = envBaseURL
 	}
@@ -181,17 +185,32 @@ func main() {
 		fmt.Printf("Using base URL: %s\n", config.BaseURL)
 	}
 
-	// If the API key is still not set, prompt the user
-	if config.APIKey == "" {
-		if strings.Contains(config.BaseURL, "trmnl.app") {
+	// Check if we're using trmnl.app or a custom server
+	isTerminusServer := !strings.Contains(config.BaseURL, "trmnl.app")
+
+	// Ensure we have the appropriate credentials
+	if isTerminusServer {
+		// For Terminus/BYOS servers, we need a device ID (MAC address)
+		if config.DeviceID == "" {
+			// Check if API key looks like a MAC address and migrate it
+			if config.APIKey != "" && strings.Count(config.APIKey, ":") == 5 {
+				config.DeviceID = config.APIKey
+				config.APIKey = "" // Clear API key since it's actually a device ID
+			} else {
+				fmt.Println("Device ID (MAC address) not found.")
+				fmt.Print("Please enter your device MAC address (e.g., AA:BB:CC:DD:EE:FF): ")
+				fmt.Scanln(&config.DeviceID)
+			}
+			saveConfig(configDir, config)
+		}
+	} else {
+		// For trmnl.app, we need an API key
+		if config.APIKey == "" {
 			fmt.Println("TRMNL API Key not found.")
 			fmt.Print("Please enter your TRMNL API Key: ")
-		} else {
-			fmt.Println("Device ID not found.")
-			fmt.Print("Please enter your device MAC address (e.g., AA:BB:CC:DD:EE:FF): ")
+			fmt.Scanln(&config.APIKey)
+			saveConfig(configDir, config)
 		}
-		fmt.Scanln(&config.APIKey)
-		saveConfig(configDir, config)
 	}
 
 	// Create a temporary directory for storing images
@@ -414,7 +433,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 		req.Header.Add("access-token", config.APIKey)
 	} else {
 		// For Terminus/BYOS servers, use ID header with MAC address
-		req.Header.Add("ID", config.APIKey)
+		req.Header.Add("ID", config.DeviceID)
 		req.Header.Add("Content-Type", "application/json")
 	}
 	req.Header.Add("battery-voltage", "100.00")
