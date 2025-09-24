@@ -394,7 +394,8 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	}()
 
 	// Get the TRMNL display
-	req, err := http.NewRequest("GET", config.BaseURL+"/api/display", nil)
+	apiURL := strings.TrimRight(config.BaseURL, "/") + "/api/display"
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
 		time.Sleep(60 * time.Second)
@@ -417,7 +418,10 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		fmt.Printf("Error fetching display: status code %d\n", resp.StatusCode)
+		fmt.Printf("Error fetching display from %s: status code %d\n", apiURL, resp.StatusCode)
+		if options.Verbose && resp.StatusCode == 404 {
+			fmt.Printf("API endpoint not found. Please verify the base URL is correct.\n")
+		}
 		time.Sleep(60 * time.Second)
 		return
 	}
