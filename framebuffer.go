@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"unsafe"
 )
 
 type ColorDepth int

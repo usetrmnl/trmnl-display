@@ -84,7 +84,7 @@ func disableCursor() error {
 	}
 	defer tty.Close()
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(&termios)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), 0x5402, uintptr(unsafe.Pointer(&termios))) // 0x5402 is TCSETS on Linux
 	if errno != 0 {
 		return fmt.Errorf("ioctl error: %v", errno)
 	}
@@ -592,30 +592,30 @@ func displayImage(imagePath string, options AppOptions, config Config) error {
 
 	// Open the framebuffer with optional forced color depth
 	var fb *Framebuffer
-	var err error
+	var fbErr error
 
 	if options.ColorDepth != nil && *options.ColorDepth > 0 {
-		fb, err = OpenFramebufferWithDepth("/dev/fb0", ColorDepth(*options.ColorDepth))
-		if err != nil {
+		fb, fbErr = OpenFramebufferWithDepth("/dev/fb0", ColorDepth(*options.ColorDepth))
+		if fbErr != nil {
 			if options.Verbose {
-				fmt.Printf("Failed to open with forced depth %d, trying auto-detect: %v\n", *options.ColorDepth, err)
+				fmt.Printf("Failed to open with forced depth %d, trying auto-detect: %v\n", *options.ColorDepth, fbErr)
 			}
-			fb, err = OpenFramebuffer("/dev/fb0")
+			fb, fbErr = OpenFramebuffer("/dev/fb0")
 		}
 	} else if config.ColorDepth != nil {
-		fb, err = OpenFramebufferWithDepth("/dev/fb0", *config.ColorDepth)
-		if err != nil {
+		fb, fbErr = OpenFramebufferWithDepth("/dev/fb0", *config.ColorDepth)
+		if fbErr != nil {
 			if options.Verbose {
-				fmt.Printf("Failed to open with configured depth %d, trying auto-detect: %v\n", *config.ColorDepth, err)
+				fmt.Printf("Failed to open with configured depth %d, trying auto-detect: %v\n", *config.ColorDepth, fbErr)
 			}
-			fb, err = OpenFramebuffer("/dev/fb0")
+			fb, fbErr = OpenFramebuffer("/dev/fb0")
 		}
 	} else {
-		fb, err = OpenFramebuffer("/dev/fb0")
+		fb, fbErr = OpenFramebuffer("/dev/fb0")
 	}
 
-	if err != nil {
-		return fmt.Errorf("error opening framebuffer: %v", err)
+	if fbErr != nil {
+		return fmt.Errorf("error opening framebuffer: %v", fbErr)
 	}
 	defer fb.Close()
 
