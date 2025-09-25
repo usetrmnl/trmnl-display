@@ -49,6 +49,7 @@ type Config struct {
 	DeviceID   string      `json:"device_id,omitempty"`   // Device ID (MAC address) for Terminus/BYOS servers
 	BaseURL    string      `json:"base_url,omitempty"`
 	ColorDepth *ColorDepth `json:"color_depth,omitempty"` // Optional: force specific color depth (16, 24, or 32)
+	Rotation   int         `json:"rotation,omitempty"`    // Display rotation in degrees (0, 90, 180, 270)
 }
 
 // AppOptions holds command line options
@@ -57,6 +58,7 @@ type AppOptions struct {
 	Verbose    bool
 	BaseURL    string
 	ColorDepth *int
+	Rotation   int
 }
 
 // FramebufferLock represents the lock file structure
@@ -395,6 +397,7 @@ func parseCommandLineArgs() AppOptions {
 	quiet := flag.Bool("q", false, "Quiet mode (disable verbose output)")
 	baseURL := flag.String("base-url", "", "Custom base URL for the TRMNL API (default: https://trmnl.app)")
 	colorDepth := flag.Int("color-depth", 0, "Force specific framebuffer color depth (16, 24, or 32; 0=auto-detect)")
+	rotation := flag.Int("rotate", 0, "Rotate display in degrees (0, 90, 180, or 270)")
 	flag.Parse()
 
 	if *showVersion {
@@ -407,9 +410,15 @@ func parseCommandLineArgs() AppOptions {
 		DarkMode: *darkMode,
 		Verbose:  *verbose && !*quiet,
 		BaseURL:  *baseURL,
+		Rotation: *rotation,
 	}
 	if *colorDepth > 0 {
 		opts.ColorDepth = colorDepth
+	}
+	// Validate rotation
+	if opts.Rotation != 0 && opts.Rotation != 90 && opts.Rotation != 180 && opts.Rotation != 270 {
+		fmt.Printf("Invalid rotation %d. Must be 0, 90, 180, or 270. Using 0.\n", opts.Rotation)
+		opts.Rotation = 0
 	}
 	return opts
 }
@@ -623,6 +632,20 @@ func displayImage(imagePath string, options AppOptions, config Config) error {
 	fbBounds := fb.Bounds()
 	if options.Verbose {
 		fmt.Printf("Framebuffer bounds: %v\n", fbBounds)
+	}
+
+	// Determine rotation from options or config
+	rotation := options.Rotation
+	if rotation == 0 && config.Rotation != 0 {
+		rotation = config.Rotation
+	}
+
+	// Apply rotation if needed
+	if rotation != 0 {
+		img = rotateImage(img, rotation)
+		if options.Verbose {
+			fmt.Printf("Applied %d degree rotation\n", rotation)
+		}
 	}
 
 	// Scale the image to fill the entire framebuffer
@@ -885,4 +908,44 @@ func listFramebufferDevices() {
 		return
 	}
 	fmt.Printf("Found framebuffer devices: %v\n", files)
+}
+
+// rotateImage rotates an image by the specified degrees (90, 180, or 270)
+func rotateImage(src image.Image, degrees int) image.Image {
+	bounds := src.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	var dst *image.RGBA
+	switch degrees {
+	case 90:
+		// 90 degrees clockwise: new dimensions are swapped
+		dst = image.NewRGBA(image.Rect(0, 0, height, width))
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				dst.Set(height-1-y, x, src.At(x, y))
+			}
+		}
+	case 180:
+		// 180 degrees: same dimensions, pixels flipped
+		dst = image.NewRGBA(image.Rect(0, 0, width, height))
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				dst.Set(width-1-x, height-1-y, src.At(x, y))
+			}
+		}
+	case 270:
+		// 270 degrees clockwise (90 degrees counter-clockwise): new dimensions are swapped
+		dst = image.NewRGBA(image.Rect(0, 0, height, width))
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				dst.Set(y, width-1-x, src.At(x, y))
+			}
+		}
+	default:
+		// No rotation
+		return src
+	}
+
+	return dst
 }
