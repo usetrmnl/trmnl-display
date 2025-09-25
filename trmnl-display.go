@@ -27,7 +27,6 @@ import (
 
 	imagedraw "golang.org/x/image/draw"
 
-	"github.com/gonutz/framebuffer"
 )
 
 // Version information
@@ -46,16 +45,18 @@ type TerminalResponse struct {
 
 // Config holds application configuration
 type Config struct {
-	APIKey   string `json:"api_key,omitempty"`   // API key for trmnl.app
-	DeviceID string `json:"device_id,omitempty"` // Device ID (MAC address) for Terminus/BYOS servers
-	BaseURL  string `json:"base_url,omitempty"`
+	APIKey     string      `json:"api_key,omitempty"`     // API key for trmnl.app
+	DeviceID   string      `json:"device_id,omitempty"`   // Device ID (MAC address) for Terminus/BYOS servers
+	BaseURL    string      `json:"base_url,omitempty"`
+	ColorDepth *ColorDepth `json:"color_depth,omitempty"` // Optional: force specific color depth (16, 24, or 32)
 }
 
 // AppOptions holds command line options
 type AppOptions struct {
-	DarkMode bool
-	Verbose  bool
-	BaseURL  string
+	DarkMode   bool
+	Verbose    bool
+	BaseURL    string
+	ColorDepth *int
 }
 
 // FramebufferLock represents the lock file structure
@@ -352,7 +353,7 @@ func setupSignalHandling() {
 func clearFramebuffer() {
 	fmt.Println("Clearing framebuffer...")
 
-	fb, err := framebuffer.Open("/dev/fb0")
+	fb, err := OpenFramebuffer("/dev/fb0")
 	if err != nil {
 		fmt.Printf("Error opening framebuffer to clear: %v\n", err)
 		return
@@ -393,6 +394,7 @@ func parseCommandLineArgs() AppOptions {
 	verbose := flag.Bool("verbose", true, "Enable verbose output")
 	quiet := flag.Bool("q", false, "Quiet mode (disable verbose output)")
 	baseURL := flag.String("base-url", "", "Custom base URL for the TRMNL API (default: https://trmnl.app)")
+	colorDepth := flag.Int("color-depth", 0, "Force specific framebuffer color depth (16, 24, or 32; 0=auto-detect)")
 	flag.Parse()
 
 	if *showVersion {
@@ -401,11 +403,15 @@ func parseCommandLineArgs() AppOptions {
 		os.Exit(0)
 	}
 
-	return AppOptions{
+	opts := AppOptions{
 		DarkMode: *darkMode,
 		Verbose:  *verbose && !*quiet,
 		BaseURL:  *baseURL,
 	}
+	if *colorDepth > 0 {
+		opts.ColorDepth = colorDepth
+	}
+	return opts
 }
 
 func processNextImage(tmpDir string, config Config, options AppOptions) {
@@ -509,7 +515,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	out.Close()
 
 	// Display the image
-	err = displayImage(filePath, options)
+	err = displayImage(filePath, options, config)
 	if err != nil {
 		fmt.Printf("Error displaying image: %v\n", err)
 		time.Sleep(60 * time.Second)
@@ -526,7 +532,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	time.Sleep(time.Duration(refreshRate) * time.Second)
 }
 
-func displayImage(imagePath string, options AppOptions) error {
+func displayImage(imagePath string, options AppOptions, config Config) error {
 	// Open the image file
 	file, err := os.Open(imagePath)
 	if err != nil {
@@ -584,8 +590,30 @@ func displayImage(imagePath string, options AppOptions) error {
 		fmt.Printf("Error switching VT to tty1: %v\n", err)
 	}
 
-	// Open the framebuffer
-	fb, err := framebuffer.Open("/dev/fb0")
+	// Open the framebuffer with optional forced color depth
+	var fb *Framebuffer
+	var err error
+
+	if options.ColorDepth != nil && *options.ColorDepth > 0 {
+		fb, err = OpenFramebufferWithDepth("/dev/fb0", ColorDepth(*options.ColorDepth))
+		if err != nil {
+			if options.Verbose {
+				fmt.Printf("Failed to open with forced depth %d, trying auto-detect: %v\n", *options.ColorDepth, err)
+			}
+			fb, err = OpenFramebuffer("/dev/fb0")
+		}
+	} else if config.ColorDepth != nil {
+		fb, err = OpenFramebufferWithDepth("/dev/fb0", *config.ColorDepth)
+		if err != nil {
+			if options.Verbose {
+				fmt.Printf("Failed to open with configured depth %d, trying auto-detect: %v\n", *config.ColorDepth, err)
+			}
+			fb, err = OpenFramebuffer("/dev/fb0")
+		}
+	} else {
+		fb, err = OpenFramebuffer("/dev/fb0")
+	}
+
 	if err != nil {
 		return fmt.Errorf("error opening framebuffer: %v", err)
 	}
