@@ -27,6 +27,8 @@ set -e
   make
   cd examples/show_png
   make
+  echo "Enabling SPI bus"
+  sudo dtparam spi=on
 
 # Check for required commands.
 command -v go >/dev/null 2>&1 || { echo >&2 "go is required but not installed. Aborting."; exit 1; }
