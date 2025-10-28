@@ -318,8 +318,11 @@ func displayImage(imagePath string, options AppOptions) error {
 // and the 3 update modes for 1-bit content
 // Please consider if this should have a counter and mimic the TRMNL-OG behavior
 //
-        exec.Command("show_png", imagePath, "fast", "B").Run()
-        
+        err := exec.Command("show_png", imagePath, "fast", "B").Run()
+        if err != nil {
+		fmt.Println("show_png tool missing; build it and try again")
+		os.Exit(0);
+        }
 	if options.Verbose {
 		fmt.Println("EPD update completed")
 	}
