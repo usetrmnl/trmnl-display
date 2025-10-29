@@ -324,6 +324,7 @@ func displayImage(imagePath string, options AppOptions) error {
 		os.Exit(0);
         }
 	if options.Verbose {
+		fmt.Printf("Displayed: %s\n", imagePath)
 		fmt.Println("EPD update completed")
 	}
 	return nil
