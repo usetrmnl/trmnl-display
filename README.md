@@ -13,7 +13,7 @@ TRMNL Display is a lightweight, terminal-based application designed to display d
 
 ## Requirements
 
-- Go 1.19 or higher
+- Go 1.24 or higher (minimum version required)
 - Framebuffer-enabled Linux device (e.g., Raspberry Pi)
 - HDMI display (e-paper displays are not supported without a virtual framebuffer)
 - Internet connection for fetching images
