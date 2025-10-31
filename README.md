@@ -69,10 +69,10 @@ Optional flags:
 
 ## Configuration
 
-TRMNL Display stores configuration files in:
+TRMNL Display by default stores configuration files in:
 
 ```
-~/.trmnl/config.json
+~/.config/trmnl/config.json
 ```
 
 This file will store your API key for convenience.
