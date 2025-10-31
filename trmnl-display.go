@@ -141,6 +141,8 @@ func main() {
 		listFramebufferDevices()
 	}
 
+	var err error
+
 	// Create a configuration directory as per XDG standard:
 	// at user-specified location when the environment variable is set,
 	// at $HOME/.config/trmnl (XDG default config location for Unix) if not set
