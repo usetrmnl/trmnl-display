@@ -144,13 +144,21 @@ func main() {
 		listFramebufferDevices()
 	}
 
-	// Create a configuration directory
-	configDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("Error getting home directory: %v\n", err)
-		os.Exit(1)
-	}
-	configDir = filepath.Join(configDir, ".trmnl")
+	var err error
+
+	// Create a configuration directory as per XDG standard:
+	// at user-specified location when the environment variable is set,
+	// at $HOME/.config/trmnl (XDG default config location for Unix) if not set
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
+		homeDir, err := os.UserHomeDir()
+        	if err != nil {
+			fmt.Printf("Error getting home directory: %v\n", err)
+			os.Exit(1)
+		}
+        	configHome = filepath.Join(homeDir, ".config")
+    	}
+	configDir := filepath.Join(configHome, "trmnl")
 	err = os.MkdirAll(configDir, 0755)
 	if err != nil {
 		fmt.Printf("Error creating config directory: %v\n", err)
