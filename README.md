@@ -31,7 +31,7 @@ cd trmnl-display
 Build the binary locally (for your current platform):
 
 ```bash
-go build -o trmnl-display ./trmnl-display.go
+go build -o trmnl-display
 ```
 
 ## Cross-compilation (Raspberry Pi)
