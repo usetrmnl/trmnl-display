@@ -27,7 +27,6 @@ import (
 
 	imagedraw "golang.org/x/image/draw"
 
-	"github.com/gonutz/framebuffer"
 )
 
 // Version information
@@ -46,16 +45,20 @@ type TerminalResponse struct {
 
 // Config holds application configuration
 type Config struct {
-	APIKey   string `json:"api_key,omitempty"`   // API key for trmnl.app
-	DeviceID string `json:"device_id,omitempty"` // Device ID (MAC address) for Terminus/BYOS servers
-	BaseURL  string `json:"base_url,omitempty"`
+	APIKey     string      `json:"api_key,omitempty"`     // API key for trmnl.app
+	DeviceID   string      `json:"device_id,omitempty"`   // Device ID (MAC address) for Terminus/BYOS servers
+	BaseURL    string      `json:"base_url,omitempty"`
+	ColorDepth *ColorDepth `json:"color_depth,omitempty"` // Optional: force specific color depth (16, 24, or 32)
+	Rotation   int         `json:"rotation,omitempty"`    // Display rotation in degrees (0, 90, 180, 270)
 }
 
 // AppOptions holds command line options
 type AppOptions struct {
-	DarkMode bool
-	Verbose  bool
-	BaseURL  string
+	DarkMode   bool
+	Verbose    bool
+	BaseURL    string
+	ColorDepth *int
+	Rotation   int
 }
 
 // FramebufferLock represents the lock file structure
@@ -83,7 +86,7 @@ func disableCursor() error {
 	}
 	defer tty.Close()
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(&termios)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), 0x5402, uintptr(unsafe.Pointer(&termios))) // 0x5402 is TCSETS on Linux
 	if errno != 0 {
 		return fmt.Errorf("ioctl error: %v", errno)
 	}
@@ -360,7 +363,7 @@ func setupSignalHandling() {
 func clearFramebuffer() {
 	fmt.Println("Clearing framebuffer...")
 
-	fb, err := framebuffer.Open("/dev/fb0")
+	fb, err := OpenFramebuffer("/dev/fb0")
 	if err != nil {
 		fmt.Printf("Error opening framebuffer to clear: %v\n", err)
 		return
@@ -401,6 +404,8 @@ func parseCommandLineArgs() AppOptions {
 	verbose := flag.Bool("verbose", true, "Enable verbose output")
 	quiet := flag.Bool("q", false, "Quiet mode (disable verbose output)")
 	baseURL := flag.String("base-url", "", "Custom base URL for the TRMNL API (default: https://trmnl.app)")
+	colorDepth := flag.Int("color-depth", 0, "Force specific framebuffer color depth (16, 24, or 32; 0=auto-detect)")
+	rotation := flag.Int("rotate", 0, "Rotate display in degrees (0, 90, 180, or 270)")
 	flag.Parse()
 
 	if *showVersion {
@@ -409,11 +414,21 @@ func parseCommandLineArgs() AppOptions {
 		os.Exit(0)
 	}
 
-	return AppOptions{
+	opts := AppOptions{
 		DarkMode: *darkMode,
 		Verbose:  *verbose && !*quiet,
 		BaseURL:  *baseURL,
+		Rotation: *rotation,
 	}
+	if *colorDepth > 0 {
+		opts.ColorDepth = colorDepth
+	}
+	// Validate rotation
+	if opts.Rotation != 0 && opts.Rotation != 90 && opts.Rotation != 180 && opts.Rotation != 270 {
+		fmt.Printf("Invalid rotation %d. Must be 0, 90, 180, or 270. Using 0.\n", opts.Rotation)
+		opts.Rotation = 0
+	}
+	return opts
 }
 
 func processNextImage(tmpDir string, config Config, options AppOptions) {
@@ -517,7 +532,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	out.Close()
 
 	// Display the image
-	err = displayImage(filePath, options)
+	err = displayImage(filePath, options, config)
 	if err != nil {
 		fmt.Printf("Error displaying image: %v\n", err)
 		time.Sleep(60 * time.Second)
@@ -534,7 +549,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	time.Sleep(time.Duration(refreshRate) * time.Second)
 }
 
-func displayImage(imagePath string, options AppOptions) error {
+func displayImage(imagePath string, options AppOptions, config Config) error {
 	// Open the image file
 	file, err := os.Open(imagePath)
 	if err != nil {
@@ -592,10 +607,32 @@ func displayImage(imagePath string, options AppOptions) error {
 		fmt.Printf("Error switching VT to tty1: %v\n", err)
 	}
 
-	// Open the framebuffer
-	fb, err := framebuffer.Open("/dev/fb0")
-	if err != nil {
-		return fmt.Errorf("error opening framebuffer: %v", err)
+	// Open the framebuffer with optional forced color depth
+	var fb *Framebuffer
+	var fbErr error
+
+	if options.ColorDepth != nil && *options.ColorDepth > 0 {
+		fb, fbErr = OpenFramebufferWithDepth("/dev/fb0", ColorDepth(*options.ColorDepth))
+		if fbErr != nil {
+			if options.Verbose {
+				fmt.Printf("Failed to open with forced depth %d, trying auto-detect: %v\n", *options.ColorDepth, fbErr)
+			}
+			fb, fbErr = OpenFramebuffer("/dev/fb0")
+		}
+	} else if config.ColorDepth != nil {
+		fb, fbErr = OpenFramebufferWithDepth("/dev/fb0", *config.ColorDepth)
+		if fbErr != nil {
+			if options.Verbose {
+				fmt.Printf("Failed to open with configured depth %d, trying auto-detect: %v\n", *config.ColorDepth, fbErr)
+			}
+			fb, fbErr = OpenFramebuffer("/dev/fb0")
+		}
+	} else {
+		fb, fbErr = OpenFramebuffer("/dev/fb0")
+	}
+
+	if fbErr != nil {
+		return fmt.Errorf("error opening framebuffer: %v", fbErr)
 	}
 	defer fb.Close()
 
@@ -603,6 +640,20 @@ func displayImage(imagePath string, options AppOptions) error {
 	fbBounds := fb.Bounds()
 	if options.Verbose {
 		fmt.Printf("Framebuffer bounds: %v\n", fbBounds)
+	}
+
+	// Determine rotation from options or config
+	rotation := options.Rotation
+	if rotation == 0 && config.Rotation != 0 {
+		rotation = config.Rotation
+	}
+
+	// Apply rotation if needed
+	if rotation != 0 {
+		img = rotateImage(img, rotation)
+		if options.Verbose {
+			fmt.Printf("Applied %d degree rotation\n", rotation)
+		}
 	}
 
 	// Scale the image to fill the entire framebuffer
@@ -865,4 +916,44 @@ func listFramebufferDevices() {
 		return
 	}
 	fmt.Printf("Found framebuffer devices: %v\n", files)
+}
+
+// rotateImage rotates an image by the specified degrees (90, 180, or 270)
+func rotateImage(src image.Image, degrees int) image.Image {
+	bounds := src.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	var dst *image.RGBA
+	switch degrees {
+	case 90:
+		// 90 degrees clockwise: new dimensions are swapped
+		dst = image.NewRGBA(image.Rect(0, 0, height, width))
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				dst.Set(height-1-y, x, src.At(x, y))
+			}
+		}
+	case 180:
+		// 180 degrees: same dimensions, pixels flipped
+		dst = image.NewRGBA(image.Rect(0, 0, width, height))
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				dst.Set(width-1-x, height-1-y, src.At(x, y))
+			}
+		}
+	case 270:
+		// 270 degrees clockwise (90 degrees counter-clockwise): new dimensions are swapped
+		dst = image.NewRGBA(image.Rect(0, 0, height, width))
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				dst.Set(y, width-1-x, src.At(x, y))
+			}
+		}
+	default:
+		// No rotation
+		return src
+	}
+
+	return dst
 }

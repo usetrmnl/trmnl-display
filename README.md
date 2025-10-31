@@ -10,10 +10,11 @@ TRMNL Display is a lightweight, terminal-based application designed to display d
 - Configurable refresh rates.
 - Easy configuration through environment variables or interactive prompts.
 - Automated cross-compilation script for various Raspberry Pi models and architectures.
+- Compatible with Raspberry Pi Touch Display 2 (5" and 7" models).
 
 ## Requirements
 
-- Go 1.19 or higher
+- Go 1.24 or higher (minimum version required)
 - Framebuffer-enabled Linux device (e.g., Raspberry Pi)
 - HDMI display (e-paper displays are not supported without a virtual framebuffer)
 - Internet connection for fetching images
@@ -30,7 +31,7 @@ cd trmnl-display
 Build the binary locally (for your current platform):
 
 ```bash
-go build -o trmnl-display ./trmnl-display.go
+go build -o trmnl-display
 ```
 
 ## Cross-compilation (Raspberry Pi)
