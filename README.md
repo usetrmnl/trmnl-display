@@ -10,6 +10,7 @@ TRMNL Display is a lightweight, terminal-based application designed to display d
 - Configurable refresh rates.
 - Easy configuration through environment variables or interactive prompts.
 - Automated cross-compilation script for various Raspberry Pi models and architectures.
+- Compatible with Raspberry Pi Touch Display 2 (5" and 7" models).
 
 ## Requirements
 
