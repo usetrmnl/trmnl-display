@@ -61,13 +61,21 @@ func main() {
 		}
 	}
 
-	// Create a configuration directory
-	configDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("Error getting home directory: %v\n", err)
-		os.Exit(1)
-	}
-	configDir = filepath.Join(configDir, ".trmnl")
+	var err error
+
+	// Create a configuration directory as per XDG standard:
+	// at user-specified location when the environment variable is set,
+	// at $HOME/.config/trmnl (XDG default config location for Unix) if not set
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
+		homeDir, err := os.UserHomeDir()
+        	if err != nil {
+			fmt.Printf("Error getting home directory: %v\n", err)
+			os.Exit(1)
+		}
+        	configHome = filepath.Join(homeDir, ".config")
+    	}
+	configDir := filepath.Join(configHome, "trmnl")
 	err = os.MkdirAll(configDir, 0755)
 	if err != nil {
 		fmt.Printf("Error creating config directory: %v\n", err)
@@ -318,7 +326,11 @@ func displayImage(imagePath string, options AppOptions) error {
 // and the 3 update modes for 1-bit content
 // Please consider if this should have a counter and mimic the TRMNL-OG behavior
 //
-        err := exec.Command("show_png", imagePath, "fast", "B").Run()
+        var sb strings.Builder
+
+        sb.WriteString("file=")
+        sb.WriteString(imagePath)
+        err := exec.Command("show_png", sb.String(), "mode=fast").Run()
         if err != nil {
 		fmt.Println("show_png tool missing; build it and try again")
 		os.Exit(0);
