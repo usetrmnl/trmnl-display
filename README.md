@@ -43,8 +43,6 @@ chmod +x build.sh
 ./build.sh
 ```
 
-This script will automatically handle cross-compilation and upload binaries to your specified AWS S3 bucket.
-
 ## Usage
 
 Ensure your TRMNL API key is set either in the environment variable or via the interactive prompt:

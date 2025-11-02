@@ -1,12 +1,11 @@
 #!/bin/bash
 set -e
 # This script builds the trmnl-epaper binary for multiple Raspberry Pi architectures using cross-compilation.
-# AWS CLI is required for uploading to S3.
 
 # save the current directory
   pushd .
 # Install the required components
-  sudo apt install git gpiod libgpiod-dev golang-go awscli -y
+  sudo apt install git gpiod libgpiod-dev golang-go -y
 
 # clone and build the epaper and PNG support
   mkdir -p $HOME/Projects
