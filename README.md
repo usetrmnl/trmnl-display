@@ -1,20 +1,21 @@
 # TRMNL Display
 
-TRMNL Display is a lightweight, terminal-based application designed to display dynamic images directly on framebuffer-enabled devices, such as Raspberry Pi with HDMI or e-paper displays. It fetches images from the TRMNL API (or your own self-hosted sever) and renders them directly to the framebuffer, providing a seamless display experience without requiring a traditional desktop environment.
+TRMNL Display is a lightweight, Linux command line application designed to display dynamic images directly on both framebuffer (LCD/HDMI) and SPI e-paper displays like the one in the TRMNL og. It fetches images from the TRMNL API (or your own self-hosted sever) and renders them directly to either a framebuffer or e-paper, providing a seamless display experience without requiring a traditional desktop environment.
 
 ## Features
 
-- Direct framebuffer image rendering.
+- Direct framebuffer or e-paper image rendering.
 - Supports JPEG, PNG, and BMP image formats.
-- Custom handling for BMP images, including 1-bit BMPs with dark mode inversion.
+- 1-bit images support optional dark mode inversion.
 - Configurable refresh rates.
 - Easy configuration through environment variables or interactive prompts.
 
 ## Requirements
 
+- Linux SBC (Raspberry Pi, Orange Pi, etc)
 - Go 1.24 or higher (minimum version required)
-- Framebuffer-enabled Linux device (Raspberry Pi, Orange Pi, etc)
-- HDMI display or e-paper display
+- framebuffer-enabled display 
+- or e-paper display with SPI connection
 - Internet connection for fetching images
 
 ## Installation
@@ -90,6 +91,8 @@ Optional flags:
 
 ```bash
 ./trmnl-display -d
+or
+./trmnl-epaper -d
 ```
 
 ## Configuration
@@ -101,6 +104,8 @@ TRMNL Display by default stores configuration files in:
 ```
 
 This file stores your API Key and other preferences. You may also need to provide your MAC address with key `device_id` for BYOS clients that require it to be paired with an API Key in the request headers.
+
+trmnl-epaper has an additional json configuration (epaper.json) which configures the e-paper GPIO connection and panel type. See the example file provided with this repo.
 
 ## License
 
