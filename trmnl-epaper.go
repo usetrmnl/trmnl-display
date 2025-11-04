@@ -327,10 +327,19 @@ func displayImage(imagePath string, options AppOptions) error {
 // Please consider if this should have a counter and mimic the TRMNL-OG behavior
 //
         var sb strings.Builder
+        var sb2 strings.Builder
 
         sb.WriteString("file=")
         sb.WriteString(imagePath)
-        err := exec.Command("show_png", sb.String(), "mode=fast").Run()
+
+        sb2.WriteString("invert=")
+        if options.DarkMode {
+              sb2.WriteString("true")
+        } else {
+              sb2.WriteString("false")
+        }
+
+        err := exec.Command("show_png", sb.String(), sb2.String(), "mode=fast").Run()
         if err != nil {
 		fmt.Println("show_png tool missing; build it and try again")
 		os.Exit(0);
