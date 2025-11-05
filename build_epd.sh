@@ -22,14 +22,20 @@ set -e
       git clone https://github.com/bitbank2/PNGdec
   fi
 
+  if [ -d $HOME/Projects/JPEGDEC ]; then
+      echo "JPEGDEC already exists"
+  else
+      git clone https://github.com/bitbank2/JPEGDEC
+  fi
+
   cd PNGdec/linux
+  make
+  cd ../../JPEGDEC/linux
   make
   cd ../../bb_epaper/rpi
   make
   cd examples/show_png
   make
-  echo "Enabling SPI bus"
-  sudo dtparam spi=on
 # restore the original directory
   popd
   echo "Compiling TRMNL go program..."

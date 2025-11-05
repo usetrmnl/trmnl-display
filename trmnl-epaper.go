@@ -339,7 +339,7 @@ func displayImage(imagePath string, options AppOptions) error {
               sb2.WriteString("false")
         }
 
-        err := exec.Command("show_png", sb.String(), sb2.String(), "mode=fast").Run()
+        err := exec.Command("show_img", sb.String(), sb2.String(), "mode=fast").Run()
         if err != nil {
 		fmt.Println("show_png tool missing; build it and try again")
 		os.Exit(0);
