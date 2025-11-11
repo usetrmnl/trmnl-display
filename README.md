@@ -27,45 +27,20 @@ git clone https://github.com/usetrmnl/trmnl-display.git
 cd trmnl-display
 ```
 
-#### E-paper Display
-
-Run the provided `build_epd.sh` script:
+Run the provided `build.sh` script:
 
 ```bash
-./build_epd.sh
-
-# logs
-# sudo cp show_png /usr/local/bin
-# Enabling SPI bus
-# ~/Desktop/trmnl-display
-# Compiling TRMNL go program...
-```
+./build.sh
 
 When it completes you'll a message: `Build complete. Run trmnl-epaper to start`.
-
-#### HDMI Display
-
-To build for Raspberry Pi architectures, run the provided `build.sh` script:
-
-```bash
-chmod +x build.sh
-./build.sh
-```
-
-Otherwise, build the binary locally (for your current platform):
-
-```bash
-go build -o trmnl-display
-```
 
 ## Usage
 Navigate to wherever you cloned the `trmnl-display` repository.
 
-#### E-paper Display
 Run the application:
 
 ```bash
-./trmnl-epaper
+./trmnl-display
 ```
 
 On the first run you'll be asked to provide your API Key. If you're using TRMNL's native application at usetrmnl.com, find it at https://usetrmnl.com/devices/current/edit.
