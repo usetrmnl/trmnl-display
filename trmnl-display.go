@@ -131,8 +131,9 @@ func main() {
 	} else {
 		// For trmnl.app, we need an API key
 		if config.APIKey == "" {
-			fmt.Println("TRMNL API Key not found.")
-			fmt.Print("Please enter your TRMNL API Key: ")
+			fmt.Println("TRMNL (device) API Key not found.")
+                        fmt.Println("(in the Device Credentials section of the web portal)")
+			fmt.Print("Please enter your key: ")
 			fmt.Scanln(&config.APIKey)
 			saveConfig(configDir, config)
 		}
