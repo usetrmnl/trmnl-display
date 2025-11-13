@@ -44,11 +44,12 @@ set -e
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
   case $n in
-	  1) JADAPTER="framebuffer";;
+	  1) echo 0 | sudo tee /sys/class/graphics/fbcon/cursor_blink
+	     JADAPTER="framebuffer";;
 	  2) JADAPTER="waveshare_2";;
 	  *) echo "Invalid option" ; exit 1;;
   esac
-  JEND=$(printf "\",\n        \"panel_1bit\": \"EP75_800x480_GEN2\",\n        \"panel_2bit\": \"EP75_800x480_4GRAY_GEN2\"\n}\n")
+  JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"EP75_800x480_GEN2\",\n        \"panel_2bit\": \"EP75_800x480_4GRAY_GEN2\"\n}\n")
   printf '%s%s%s' "$JSTART" "$JADAPTER" "$JEND" > epaper.json
 
   echo "Compiling TRMNL go program..."
