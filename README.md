@@ -60,6 +60,14 @@ On the first run you'll be asked to provide your API Key. If you're using TRMNL'
 
 If you're using a [BYOS solution](https://docs.usetrmnl.com/go/diy/byos), find your API key from that implementation's settings screen. You will also need to change the `base_url` to point to your server. See **Configuration** for more details.
 
+To skip to the next item in your playlist, press the `enter` key.
+
+```bash
+Keypress...skipping to next update
+Displayed: /tmp/trmnl-display3898330261/plugin-b67875-1763221411
+EPD update completed
+```
+
 Optional flags:
 
 - Enable dark mode (inverts all pixels):
