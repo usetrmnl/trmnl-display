@@ -88,7 +88,7 @@ This lets you escape the command (`ctrl+c`) and close your session without termi
 
 **Background + Automatic Reboot**
 
-To restart trmnl-display whenever your device is turned on, access your crontab editor with `crontab -e`. You may be required to set an editor (1, 2, 3), then press enter.
+To restart `trmnl-display` whenever your device is turned on, access your crontab editor with `crontab -e`. You may be required to set an editor (1, 2, 3), then press enter.
 
 ```bash
 crontab -e
@@ -104,10 +104,10 @@ Choose 1-3 [1]:
 Inside your crontab, paste the following command. Change the path (if applicable) to point to your `trmnl-display` Installation location:
 
 ```bash
-@reboot sleep 30 && nohup /home/$(whoami)/Desktop/trmnl-display/./trmnl-display > /home/$(whoami)/.config/trmnl/logfile.log 2>&1 &
+@reboot sleep 15 && nohup /home/$(whoami)/Desktop/trmnl-display/./trmnl-display > /home/$(whoami)/.config/trmnl/logfile.log 2>&1 &
 ```
 
-The `sleep 30` is intended to ensure your network configuration is ready before `trmnl-display` attempts to make an HTTP request to your playlist.
+The `sleep 15` intends to ensure your network configuration is ready before `trmnl-display` makes an HTTP request to your playlist.
 
 Confirm this works by running `sudo reboot`, which should momentarily trigger an automatic screen refresh.
 
