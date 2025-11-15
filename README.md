@@ -88,15 +88,16 @@ This lets you escape the command (`ctrl+c`) and close your session without termi
 
 ## Configuration
 
-TRMNL Display by default stores configuration files in:
+TRMNL Display by default stores the following two configuration files in:
 
 ```
 ~/.config/trmnl/config.json
+~/.config/trmnl/show_img.json
 ```
 
-This file stores your API Key and other preferences. You may also need to provide your MAC address with key `device_id` for BYOS clients that require it to be paired with an API Key in the request headers.
+config.json stores your API Key and other preferences. You may also need to provide your MAC address with key `device_id` for BYOS clients that require it to be paired with an API Key in the request headers.
 
-If you selected an e-paper display device during Installation, there will be an additional json configuration (epaper.json) which configures the e-paper GPIO connection and panel type. See the example file provided with this repo.
+show_img.json stores the configuration for your e-paper or framebuffer display device. It will be created during Installation (one of the final steps in build.sh).
 
 ## License
 

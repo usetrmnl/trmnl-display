@@ -7,23 +7,33 @@ set -e
 # Install the required components
   sudo apt install git gpiod libgpiod-dev golang-go -y
 
-# clone and build the epaper and PNG support
+# clone and build the epaper and image file support
   mkdir -p $HOME/Projects
+  mkdir -p $HOME/.config/trmnl
   cd $HOME/Projects
   if [ -d $HOME/Projects/bb_epaper ]; then
-      echo "bb_epaper already exists"
+      echo "bb_epaper already cloned, updating to latest..."
+      cd bb_epaper
+      git pull
+      cd ..
   else
       git clone https://github.com/bitbank2/bb_epaper
   fi
 
   if [ -d $HOME/Projects/PNGdec ]; then
-      echo "PNGdec already exists"
+      echo "PNGdec already cloned, updating to latest..."
+      cd PNGdec
+      git pull
+      cd ..
   else
       git clone https://github.com/bitbank2/PNGdec
   fi
 
   if [ -d $HOME/Projects/JPEGDEC ]; then
-      echo "JPEGDEC already exists"
+      echo "JPEGDEC already cloned, updating to latest..."
+      cd JPEGDEC
+      git pull
+      cd ..
   else
       git clone https://github.com/bitbank2/JPEGDEC
   fi
@@ -50,7 +60,7 @@ set -e
 	  *) echo "Invalid option" ; exit 1;;
   esac
   JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"EP75_800x480_GEN2\",\n        \"panel_2bit\": \"EP75_800x480_4GRAY_GEN2\"\n}\n")
-  printf '%s%s%s' "$JSTART" "$JADAPTER" "$JEND" > epaper.json
+  printf '%s%s%s' "$JSTART" "$JADAPTER" "$JEND" > $HOME/.config/trmnl/show_img.json
 
   echo "Compiling TRMNL go program..."
   go build -o trmnl-display ./trmnl-display.go
