@@ -146,9 +146,10 @@ func main() {
 		os.Exit(1)
 	}
 	defer os.RemoveAll(tmpDir)
-
+	frames := 0
 	for {
-		processNextImage(tmpDir, config, options)
+		processNextImage(tmpDir, config, options, frames)
+		frames = frames + 1
 	}
 }
 
@@ -185,7 +186,7 @@ func parseCommandLineArgs() AppOptions {
 	}
 }
 
-func processNextImage(tmpDir string, config Config, options AppOptions) {
+func processNextImage(tmpDir string, config Config, options AppOptions, frames int) {
 	// Use defer and recover to handle any panics
 	defer func() {
 		if r := recover(); r != nil {
@@ -286,7 +287,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	out.Close()
 
 	// Display the image
-	err = displayImage(filePath, options)
+	err = displayImage(filePath, options, frames)
 	if err != nil {
 		fmt.Printf("Error displaying image: %v\n", err)
 		time.Sleep(60 * time.Second)
@@ -320,7 +321,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 	}
 }
 
-func displayImage(imagePath string, options AppOptions) error {
+func displayImage(imagePath string, options AppOptions, frames int) error {
 //
 // N.B (Larry Bank)
 // This update can use one of 3 temperature/panel profiles
@@ -329,6 +330,7 @@ func displayImage(imagePath string, options AppOptions) error {
 //
         var sb strings.Builder
         var sb2 strings.Builder
+        var sb3 strings.Builder
 
         sb.WriteString("file=")
         sb.WriteString(imagePath)
@@ -340,7 +342,13 @@ func displayImage(imagePath string, options AppOptions) error {
               sb2.WriteString("false")
         }
 
-        err := exec.Command("show_img", sb.String(), sb2.String(), "mode=fast").Run()
+        sb3.WriteString("mode=")
+        if (frames & 3) == 0 { // use fast mode every 4 updates to clear any ghosting
+              sb3.WriteString("fast")
+        } else {
+              sb3.WriteString("partial") // partial = no flicker/flash
+        }
+        err := exec.Command("show_img", sb.String(), sb2.String(), sb3.String()).Run()
         if err != nil {
 		fmt.Println("show_img tool missing; build it and try again; error = %v", err)
 		os.Exit(0);
