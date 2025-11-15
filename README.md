@@ -86,6 +86,31 @@ nohup ./trmnl-display &
 
 This lets you escape the command (`ctrl+c`) and close your session without terminating the script.
 
+**Background + Automatic Reboot**
+
+To restart trmnl-display whenever your device is turned on, access your crontab editor with `crontab -e`. You may be required to set an editor (1, 2, 3), then press enter.
+
+```bash
+crontab -e
+no crontab for trmnl - using an empty one
+Select an editor.  To change later, run select-editor again.
+  1. /bin/nano        <---- easiest
+  2. /usr/bin/vim.tiny
+  3. /bin/ed
+
+Choose 1-3 [1]:
+```
+
+Inside your crontab, paste the following command. Change the path (if applicable) to point to your `trmnl-display` Installation location:
+
+```bash
+@reboot sleep 30 && nohup /home/$(whoami)/Desktop/trmnl-display/./trmnl-display > /home/$(whoami)/.config/trmnl/logfile.log 2>&1 &
+```
+
+The `sleep 30` is intended to ensure your network configuration is ready before `trmnl-display` attempts to make an HTTP request to your playlist.
+
+Confirm this works by running `sudo reboot`, which should momentarily trigger an automatic screen refresh.
+
 ## Configuration
 
 TRMNL Display by default stores the following two configuration files in:
