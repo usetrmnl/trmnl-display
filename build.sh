@@ -34,7 +34,7 @@ set -e
   make
   cd ../../bb_epaper/rpi
   make
-  # cd examples/show_img
+  cd examples/show_img
   make
 # restore the original directory
   popd
