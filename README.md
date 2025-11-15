@@ -68,6 +68,16 @@ Optional flags:
 ./trmnl-display -d
 ```
 
+## Background Usage
+Navigate to wherever you cloned the `trmnl-display` repository.
+
+Run the application:
+```bash
+nohup ./trmnl-display &
+```
+
+This lets you escape the command (`ctrl+c`) and close your session without terminating the script.
+
 ## Configuration
 
 TRMNL Display by default stores configuration files in:
@@ -78,7 +88,7 @@ TRMNL Display by default stores configuration files in:
 
 This file stores your API Key and other preferences. You may also need to provide your MAC address with key `device_id` for BYOS clients that require it to be paired with an API Key in the request headers.
 
-trmnl-epaper has an additional json configuration (epaper.json) which configures the e-paper GPIO connection and panel type. See the example file provided with this repo.
+If you selected an e-paper display device during Installation, there will be an additional json configuration (epaper.json) which configures the e-paper GPIO connection and panel type. See the example file provided with this repo.
 
 ## License
 
