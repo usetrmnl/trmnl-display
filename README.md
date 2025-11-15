@@ -31,8 +31,21 @@ Run the provided `build.sh` script:
 
 ```bash
 ./build.sh
+```
 
-When it completes you'll a message: `Build complete. Run trmnl-epaper to start`.
+You'll see a message:
+```bash
+Select your display device:
+  1) framebuffer (HDMI/LCD)
+  2) Waveshare e-paper HAT
+```
+
+Input "1" or "2", then press enter. The script will complete with the following:
+
+```bash
+Compiling TRMNL go program...
+Build complete. Run trmnl-display to start.
+```
 
 ## Usage
 Navigate to wherever you cloned the `trmnl-display` repository.
