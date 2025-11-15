@@ -14,7 +14,7 @@ TRMNL Display is a lightweight, Linux command line application designed to displ
 
 - Linux SBC (Raspberry Pi, Orange Pi, etc)
 - Go 1.24 or higher (minimum version required)
-- framebuffer-enabled display 
+- framebuffer-enabled display
 - or e-paper display with SPI connection
 - Internet connection for fetching images
 
@@ -60,27 +60,12 @@ On the first run you'll be asked to provide your API Key. If you're using TRMNL'
 
 If you're using a [BYOS solution](https://docs.usetrmnl.com/go/diy/byos), find your API key from that implementation's settings screen. You will also need to change the `base_url` to point to your server. See **Configuration** for more details.
 
-#### HDMI Display
-Ensure your TRMNL API key is set either in the **Configuration** or as an environment variable:
-
-```bash
-export TRMNL_API_KEY="your_api_key_here"
-```
-
-Run the application:
-
-```bash
-./trmnl-display
-```
-
 Optional flags:
 
-- Enable dark mode (invert 1-bit BMP images):
+- Enable dark mode (inverts all pixels):
 
 ```bash
 ./trmnl-display -d
-or
-./trmnl-epaper -d
 ```
 
 ## Configuration

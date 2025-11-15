@@ -46,7 +46,7 @@ type AppOptions struct {
 
 //  exec.Command("sudo", "service", "gpm", "stop").Run()
 
-func main() {	
+func main() {
 	// Parse command line arguments
 	options := parseCommandLineArgs()
 
@@ -57,7 +57,7 @@ func main() {
 	if options.Verbose {
 		fmt.Println("Checking system environment...")
 		if options.DarkMode {
-			fmt.Println("Dark mode enabled - 1-bit BMP images will be inverted")
+			fmt.Println("Dark mode enabled - images will be inverted")
 		}
 	}
 
@@ -165,7 +165,7 @@ func setupSignalHandling() {
 
 // parseCommandLineArgs parses command line arguments and returns app options
 func parseCommandLineArgs() AppOptions {
-	darkMode := flag.Bool("d", false, "Enable dark mode (invert 1-bit BMP images)")
+	darkMode := flag.Bool("d", false, "Enable dark mode (invert image pixels)")
 	showVersion := flag.Bool("v", false, "Show version information")
 	verbose := flag.Bool("verbose", true, "Enable verbose output")
 	quiet := flag.Bool("q", false, "Quiet mode (disable verbose output)")
@@ -309,7 +309,7 @@ func processNextImage(tmpDir string, config Config, options AppOptions) {
 			break
 		}
 	}()
-	
+
 	out:
 	// Sleep for the refresh rate
 	for i := 0; i < refreshRate; i++ {
@@ -378,4 +378,3 @@ func saveConfig(configDir string, config Config) {
 		fmt.Printf("Error writing config file: %v\n", err)
 	}
 }
-
