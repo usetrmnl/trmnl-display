@@ -56,7 +56,7 @@ Run the application:
 ./trmnl-display
 ```
 
-On the first run you'll be asked to provide your API Key. If you're using TRMNL's native application at usetrmnl.com, find it at https://usetrmnl.com/devices/current/edit.
+On the first run you'll be asked to provide your Device API Key. If you're using TRMNL's native application at usetrmnl.com, go to https://usetrmnl.com/devices/current/edit and find the key under the Developer Perks section.
 
 If you're using a [BYOS solution](https://docs.usetrmnl.com/go/diy/byos), find your API key from that implementation's settings screen. You will also need to change the `base_url` to point to your server. See **Configuration** for more details.
 
@@ -120,7 +120,7 @@ TRMNL Display by default stores the following two configuration files in:
 ~/.config/trmnl/show_img.json
 ```
 
-config.json stores your API Key and other preferences. You may also need to provide your MAC address with key `device_id` for BYOS clients that require it to be paired with an API Key in the request headers.
+config.json stores your Device API Key and other preferences. You may also need to provide your MAC address with key `device_id` for BYOS clients that require it to be paired with an API Key in the request headers.
 
 show_img.json stores the configuration for your e-paper or framebuffer display device. It will be created during Installation (one of the final steps in build.sh).
 
