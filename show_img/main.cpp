@@ -21,6 +21,7 @@
 #include "cJSON.h"
 #include <unistd.h>
 #include <stdio.h>
+#include <stdexcept>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <dirent.h>
