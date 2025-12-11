@@ -1,12 +1,16 @@
 #!/bin/bash
 set -e
 # This script builds the trmnl-epaper binary for multiple Raspberry Pi architectures using cross-compilation.
-
+HOST=$(uname)
+MAC="Darwin"
 # save the current directory
   pushd .
 # Install the required components
+if [ "$HOST" == "$MAC" ]; then 
+  brew install golang
+else
   sudo apt install git gpiod libgpiod-dev golang-go -y
-
+fi
 # clone and build the epaper and image file support
   mkdir -p $HOME/Projects
   mkdir -p $HOME/.config/trmnl

@@ -348,7 +348,7 @@ func displayImage(imagePath string, options AppOptions, frames int) error {
         } else {
               sb3.WriteString("partial") // partial = no flicker/flash
         }
-        err := exec.Command("show_img", sb.String(), sb2.String(), sb3.String()).Run()
+        err := exec.Command("show_img", sb.String(), sb2.String(), sb3.String()).Start()
         if err != nil {
 		fmt.Println("show_img tool missing; build it and try again; error = %v", err)
 		os.Exit(0);
