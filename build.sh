@@ -51,15 +51,19 @@ set -e
   echo "Select your display device:"
   echo "  1) framebuffer (HDMI/LCD)"
   echo "  2) Waveshare e-paper HAT"
+  echo "  3) Pimoroni Inky Impression Spectra 7.3"
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
   case $n in
 	  1) echo 0 | sudo tee /sys/class/graphics/fbcon/cursor_blink
 	     JADAPTER="framebuffer";;
-	  2) JADAPTER="waveshare_2";;
+	  2) JADAPTER="waveshare_2"
+             PANEL="EP75_800x480_GEN2";;
+          3) JADAPTER="pimoroni"
+             PANEL="EP73_SPECTRA_800x480";;
 	  *) echo "Invalid option" ; exit 1;;
   esac
-  JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"EP75_800x480_GEN2\",\n        \"panel_2bit\": \"EP75_800x480_4GRAY_GEN2\"\n}\n")
+  JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"$PANEL\",\n        \"panel_2bit\": \"EP75_800x480_4GRAY_GEN2\"\n}\n")
   printf '%s%s%s' "$JSTART" "$JADAPTER" "$JEND" > $HOME/.config/trmnl/show_img.json
 
   echo "Compiling TRMNL go program..."
