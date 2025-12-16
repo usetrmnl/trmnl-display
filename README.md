@@ -38,9 +38,10 @@ You'll see a message:
 Select your display device:
   1) framebuffer (HDMI/LCD)
   2) Waveshare e-paper HAT
+  3) Pimoroni Inky Impression Spectra 7.3"
 ```
 
-Input "1" or "2", then press enter. The script will complete with the following:
+Input "1" or "2" or "3", then press enter. The script will complete with the following:
 
 ```bash
 Compiling TRMNL go program...
