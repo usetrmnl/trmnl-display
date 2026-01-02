@@ -56,6 +56,7 @@ set -e
   JSTART=$(printf "{\n        \"adapter\": \"")
   case $n in
 	  1) echo 0 | sudo tee /sys/class/graphics/fbcon/cursor_blink
+             PANEL="EP75_800x480_GEN2"
 	     JADAPTER="framebuffer";;
 	  2) JADAPTER="waveshare_2"
              PANEL="EP75_800x480_GEN2";;
