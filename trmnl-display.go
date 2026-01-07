@@ -146,9 +146,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer os.RemoveAll(tmpDir)
+	// Set up channel for SIGINT (Ctrl+C) to skip current image
+	sigIntChan := make(chan os.Signal, 1)
+	signal.Notify(sigIntChan, os.Interrupt)
+
 	frames := 0
 	for {
-		processNextImage(tmpDir, config, options, frames)
+		processNextImage(tmpDir, config, options, frames, sigIntChan)
 		frames = frames + 1
 	}
 }
@@ -156,7 +160,7 @@ func main() {
 // setupSignalHandling sets up handlers for SIGINT, SIGTERM, and SIGHUP
 func setupSignalHandling() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(c, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
 		<-c
 		fmt.Println("\nReceived termination signal. Cleaning up...")
@@ -186,7 +190,7 @@ func parseCommandLineArgs() AppOptions {
 	}
 }
 
-func processNextImage(tmpDir string, config Config, options AppOptions, frames int) {
+func processNextImage(tmpDir string, config Config, options AppOptions, frames int, sigIntChan chan os.Signal) {
 	// Use defer and recover to handle any panics
 	defer func() {
 		if r := recover(); r != nil {
@@ -311,13 +315,20 @@ func processNextImage(tmpDir string, config Config, options AppOptions, frames i
 		}
 	}()
 
-	out:
 	// Sleep for the refresh rate
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	out:
 	for i := 0; i < refreshRate; i++ {
-	    time.Sleep(time.Second) // sleep one second at a time
-	    if done == 1 {
-	        break out
-	    }
+		select {
+		case <-sigIntChan:
+			fmt.Println("\nSIGINT received... skipping to next update")
+			break out
+		case <-ticker.C:
+			if done == 1 {
+				break out
+			}
+		}
 	}
 }
 
