@@ -354,8 +354,9 @@ func displayImage(imagePath string, options AppOptions, frames int) error {
 		os.Exit(0);
         }
 	if options.Verbose {
-		fmt.Printf("Displayed: %s\n", imagePath)
-		fmt.Println("EPD update completed")
+        now := time.Now().Format(time.RFC3339)
+        fmt.Printf("[%s] Displayed: %s\n", now, imagePath)
+        fmt.Printf("[%s] EPD update completed\n", now)
 	}
 	return nil
 }
