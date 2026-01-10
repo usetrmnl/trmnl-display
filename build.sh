@@ -54,6 +54,7 @@ set -e
   echo "  3) Pimoroni Inky Impression Spectra 7.3"
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
+  PANEL2="EP75_800x480_4GRAY_GEN2"
   case $n in
 	  1) echo 0 | sudo tee /sys/class/graphics/fbcon/cursor_blink
              PANEL="EP75_800x480_GEN2"
@@ -61,10 +62,11 @@ set -e
 	  2) JADAPTER="waveshare_2"
              PANEL="EP75_800x480_GEN2";;
           3) JADAPTER="pimoroni"
+             PANEL2="EP73_SPECTRA_800x480"
              PANEL="EP73_SPECTRA_800x480";;
 	  *) echo "Invalid option" ; exit 1;;
   esac
-  JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"$PANEL\",\n        \"panel_2bit\": \"EP75_800x480_4GRAY_GEN2\"\n}\n")
+  JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"$PANEL\",\n        \"panel_2bit\": \"$PANEL2\"\n}\n")
   printf '%s%s%s' "$JSTART" "$JADAPTER" "$JEND" > $HOME/.config/trmnl/show_img.json
 
   echo "Compiling TRMNL go program..."
