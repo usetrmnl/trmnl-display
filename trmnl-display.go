@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,7 +14,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"bufio"
+
+	"image/png"
+
+	"github.com/mattn/go-sixel"
 )
 
 // Version information
@@ -39,9 +43,10 @@ type Config struct {
 
 // AppOptions holds command line options
 type AppOptions struct {
-	DarkMode bool
-	Verbose  bool
-	BaseURL  string
+	SixelOutput bool
+	DarkMode    bool
+	Verbose     bool
+	BaseURL     string
 }
 
 //  exec.Command("sudo", "service", "gpm", "stop").Run()
@@ -69,12 +74,12 @@ func main() {
 	configHome := os.Getenv("XDG_CONFIG_HOME")
 	if configHome == "" {
 		homeDir, err := os.UserHomeDir()
-        	if err != nil {
+		if err != nil {
 			fmt.Printf("Error getting home directory: %v\n", err)
 			os.Exit(1)
 		}
-        	configHome = filepath.Join(homeDir, ".config")
-    	}
+		configHome = filepath.Join(homeDir, ".config")
+	}
 	configDir := filepath.Join(configHome, "trmnl")
 	err = os.MkdirAll(configDir, 0755)
 	if err != nil {
@@ -132,7 +137,7 @@ func main() {
 		// For trmnl.app, we need an API key
 		if config.APIKey == "" {
 			fmt.Println("TRMNL (device) API Key not found.")
-                        fmt.Println("(in the Device Credentials section of the web portal)")
+			fmt.Println("(in the Device Credentials section of the web portal)")
 			fmt.Print("Please enter your key: ")
 			fmt.Scanln(&config.APIKey)
 			saveConfig(configDir, config)
@@ -166,6 +171,7 @@ func setupSignalHandling() {
 
 // parseCommandLineArgs parses command line arguments and returns app options
 func parseCommandLineArgs() AppOptions {
+	sixelOutput := flag.Bool("sixel", false, "Output images as Sixel graphics to the terminal")
 	darkMode := flag.Bool("d", false, "Enable dark mode (invert image pixels)")
 	showVersion := flag.Bool("v", false, "Show version information")
 	verbose := flag.Bool("verbose", true, "Enable verbose output")
@@ -180,9 +186,10 @@ func parseCommandLineArgs() AppOptions {
 	}
 
 	return AppOptions{
-		DarkMode: *darkMode,
-		Verbose:  *verbose && !*quiet,
-		BaseURL:  *baseURL,
+		SixelOutput: *sixelOutput,
+		DarkMode:    *darkMode,
+		Verbose:     *verbose && !*quiet,
+		BaseURL:     *baseURL,
 	}
 }
 
@@ -286,6 +293,16 @@ func processNextImage(tmpDir string, config Config, options AppOptions, frames i
 	}
 	out.Close()
 
+	// Print the image to the terminal using Sixel graphics
+	if options.SixelOutput {
+		err = printImage(filePath)
+		if err != nil {
+			fmt.Printf("Error printing image: %v\n", err)
+			time.Sleep(60 * time.Second)
+			return
+		}
+	}
+
 	// Display the image
 	err = displayImage(filePath, options, frames)
 	if err != nil {
@@ -311,48 +328,65 @@ func processNextImage(tmpDir string, config Config, options AppOptions, frames i
 		}
 	}()
 
-	out:
+out:
 	// Sleep for the refresh rate
 	for i := 0; i < refreshRate; i++ {
-	    time.Sleep(time.Second) // sleep one second at a time
-	    if done == 1 {
-	        break out
-	    }
+		time.Sleep(time.Second) // sleep one second at a time
+		if done == 1 {
+			break out
+		}
 	}
 }
 
+func printImage(imagePath string) error {
+	imgFile, err := os.Open(imagePath)
+	if err != nil {
+		return fmt.Errorf("error opening image file: %v", err)
+	}
+	defer imgFile.Close()
+
+	imgData, err := png.Decode(imgFile)
+	if err != nil {
+		return fmt.Errorf("error decoding image file: %v", err)
+	}
+
+	fmt.Print("\033[2J\033[H") // Clear screen and move cursor to home position
+	sixel.NewEncoder(os.Stdout).Encode(imgData)
+	return nil
+}
+
 func displayImage(imagePath string, options AppOptions, frames int) error {
-//
-// N.B (Larry Bank)
-// This update can use one of 3 temperature/panel profiles
-// and the 3 update modes for 1-bit content
-// Please consider if this should have a counter and mimic the TRMNL-OG behavior
-//
-        var sb strings.Builder
-        var sb2 strings.Builder
-        var sb3 strings.Builder
+	//
+	// N.B (Larry Bank)
+	// This update can use one of 3 temperature/panel profiles
+	// and the 3 update modes for 1-bit content
+	// Please consider if this should have a counter and mimic the TRMNL-OG behavior
+	//
+	var sb strings.Builder
+	var sb2 strings.Builder
+	var sb3 strings.Builder
 
-        sb.WriteString("file=")
-        sb.WriteString(imagePath)
+	sb.WriteString("file=")
+	sb.WriteString(imagePath)
 
-        sb2.WriteString("invert=")
-        if options.DarkMode {
-              sb2.WriteString("true")
-        } else {
-              sb2.WriteString("false")
-        }
+	sb2.WriteString("invert=")
+	if options.DarkMode {
+		sb2.WriteString("true")
+	} else {
+		sb2.WriteString("false")
+	}
 
-        sb3.WriteString("mode=")
-        if (frames & 3) == 0 { // use fast mode every 4 updates to clear any ghosting
-              sb3.WriteString("fast")
-        } else {
-              sb3.WriteString("partial") // partial = no flicker/flash
-        }
-        err := exec.Command("show_img", sb.String(), sb2.String(), sb3.String()).Run()
-        if err != nil {
+	sb3.WriteString("mode=")
+	if (frames & 3) == 0 { // use fast mode every 4 updates to clear any ghosting
+		sb3.WriteString("fast")
+	} else {
+		sb3.WriteString("partial") // partial = no flicker/flash
+	}
+	err := exec.Command("show_img", sb.String(), sb2.String(), sb3.String()).Run()
+	if err != nil {
 		fmt.Println("show_img tool missing; build it and try again; error = %v", err)
 		os.Exit(0);
-        }
+	}
 	if options.Verbose {
 		fmt.Printf("Displayed: %s\n", imagePath)
 		fmt.Println("EPD update completed")
