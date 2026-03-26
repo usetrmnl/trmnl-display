@@ -458,6 +458,7 @@ int rc;
         printf("PNG open returned error: %s\n", szPNGErrors[rc]);
         return -1; // only show the error once
     }
+    iBGR = 1; // reversed R/B order
 #ifndef __SDL__
     if (iAdapter > ADAPTER_FRAMEBUFFER && (png.getWidth() > bbep.width() || png.getHeight() > bbep.height())) {
         printf("Requested image is too large for the EPD.\n");
@@ -583,13 +584,13 @@ uint8_t ucTemp[768]; // temporary palette for grayscale
                 uc = *s++;
                 for (x=0; x<iWidth; x++) {
                     if (uc & 0x80) {
-                       r = pPalette[5];
+                       r = pPalette[rOff+3];
                        g = pPalette[4];
-                       b = pPalette[3];
+                       b = pPalette[bOff+3];
                     } else {
-                       r = pPalette[2];
+                       r = pPalette[rOff];
                        g = pPalette[1];
-                       b = pPalette[0];
+                       b = pPalette[bOff];
                     }
                     *d++ = ((r & 0xf8)<<8) | ((g & 0xfc) << 3) | (b >> 3);
                     uc <<= 1;
@@ -603,9 +604,9 @@ uint8_t ucTemp[768]; // temporary palette for grayscale
                 uc = *s++;
                 for (x=0; x<iWidth; x++) {
                     c = uc >> 6;
-                    r = pPalette[c*3+2];
+                    r = pPalette[c*3+rOff];
                     g = pPalette[c*3+1];
-                    b = pPalette[c*3+0];
+                    b = pPalette[c*3+bOff];
                     *d++ = ((r & 0xf8)<<8) | ((g & 0xfc) << 3) | (b >> 3);
                     uc <<= 2;
                     if ((x & 3) == 3) uc = *s++;
@@ -618,9 +619,9 @@ uint8_t ucTemp[768]; // temporary palette for grayscale
                 uc = *s++;
                 for (x=0; x<iWidth; x++) {
                     c = uc >> 4;
-                    r = pPalette[c*3+2];
+                    r = pPalette[c*3+rOff];
                     g = pPalette[c*3+1];
-                    b = pPalette[c*3+0];
+                    b = pPalette[c*3+bOff];
                     *d++ = ((r & 0xf8)<<8) | ((g & 0xfc) << 3) | (b >> 3);
                     uc <<= 4;
                     if ((x & 1) == 1) uc = *s++;
@@ -632,9 +633,9 @@ uint8_t ucTemp[768]; // temporary palette for grayscale
                 uint8_t uc;
                 uc = *s++;
                 for (x=0; x<iWidth; x++) {
-                    r = pPalette[uc*3+2];
+                    r = pPalette[uc*3+rOff];
                     g = pPalette[uc*3+1];
-                    b = pPalette[uc*3+0];
+                    b = pPalette[uc*3+bOff];
                     *d++ = ((r & 0xf8)<<8) | ((g & 0xfc) << 3) | (b >> 3);
                     uc = *s++;
                 } // for x
@@ -1294,7 +1295,7 @@ char szFile[256];
             printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
             return -1;
         }
-        // Create a surface to hold the GIF canvas
+        // Create a surface to hold the image canvas
         canvas = SDL_CreateRGBSurfaceWithFormat(0, 800, 480, 16, SDL_PIXELFORMAT_RGB565);
         if (canvas == nullptr) {
             printf("SDL_CreateSurface error %s\n", SDL_GetError());
