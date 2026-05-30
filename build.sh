@@ -38,14 +38,19 @@ set -e
       git clone https://github.com/bitbank2/JPEGDEC
   fi
 
+  # PNGdecs scanline buffer defaults to 320px @ 32bpp, so show_img
+  # rejects any color image wider than that with PNG_TOO_BIG. For colour I had to enlarge it to two 2048px @ 32bpp scanlines = 16386 bytes
+
+  PNG_BUF="-DPNG_MAX_BUFFERED_PIXELS=16386"
+
   cd PNGdec/linux
-  make
+  make CC="${CC:-cc} $PNG_BUF" CXX="${CXX:-g++} $PNG_BUF"
   cd ../../JPEGDEC/linux
   make
   cd ../../bb_epaper/rpi
   make
   cd examples/show_img
-  make
+  make CC="${CC:-cc} $PNG_BUF" CXX="${CXX:-g++} $PNG_BUF"
 # restore the original directory
   popd
   echo "Select your display device:"
