@@ -35,6 +35,12 @@ type Config struct {
 	APIKey   string `json:"api_key,omitempty"`   // API key for trmnl.app
 	DeviceID string `json:"device_id,omitempty"` // Device ID (MAC address) for Terminus/BYOS servers
 	BaseURL  string `json:"base_url,omitempty"`
+	// DisplayCommand is the external command used to render an image on the
+	// display. Defaults to "show_img" (the bb_epaper backend). build.sh sets
+	// this to the inky Python renderer when an Inky board is selected. The
+	// value may contain arguments (e.g. "/path/python3 /path/inky_display.py");
+	// the image/invert/mode arguments are appended when it is invoked.
+	DisplayCommand string `json:"display_command,omitempty"`
 }
 
 // AppOptions holds command line options
@@ -42,6 +48,8 @@ type AppOptions struct {
 	DarkMode bool
 	Verbose  bool
 	BaseURL  string
+	// DisplayCommand mirrors Config.DisplayCommand; resolved in main().
+	DisplayCommand string
 }
 
 //  exec.Command("sudo", "service", "gpm", "stop").Run()
@@ -105,6 +113,9 @@ func main() {
 	if config.BaseURL == "" {
 		config.BaseURL = "https://trmnl.app"
 	}
+
+	// Resolve the display backend command (see Config.DisplayCommand).
+	options.DisplayCommand = config.DisplayCommand
 
 	if options.Verbose {
 		fmt.Printf("Using base URL: %s\n", config.BaseURL)
@@ -348,9 +359,21 @@ func displayImage(imagePath string, options AppOptions, frames int) error {
         } else {
               sb3.WriteString("partial") // partial = no flicker/flash
         }
-        err := exec.Command("show_img", sb.String(), sb2.String(), sb3.String()).Run()
+        // Resolve the render backend. Defaults to the bb_epaper "show_img"
+        // binary; an Inky board uses the inky Python renderer instead. The
+        // command may include its own arguments (e.g. "python3 inky_display.py"),
+        // so split it and append the file/invert/mode arguments.
+        displayCommand := options.DisplayCommand
+        if displayCommand == "" {
+              displayCommand = "show_img"
+        }
+        fields := strings.Fields(displayCommand)
+        cmdName := fields[0]
+        cmdArgs := append([]string{}, fields[1:]...)
+        cmdArgs = append(cmdArgs, sb.String(), sb2.String(), sb3.String())
+        err := exec.Command(cmdName, cmdArgs...).Run()
         if err != nil {
-		fmt.Println("show_img tool missing; build it and try again; error = %v", err)
+		fmt.Printf("%s render command failed; check it is installed/built; error = %v\n", cmdName, err)
 		os.Exit(0);
         }
 	if options.Verbose {
