@@ -1,9 +1,13 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/draw"
 	"io"
 	"net/http"
 	"os"
@@ -14,6 +18,12 @@ import (
 	"syscall"
 	"time"
 	"bufio"
+
+	// Register the decoders for the image formats a TRMNL server may serve so
+	// image.Decode can turn the downloaded file into pixels for comparison.
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 )
 
 // Version information
@@ -157,11 +167,19 @@ func main() {
 		os.Exit(1)
 	}
 	defer os.RemoveAll(tmpDir)
-	frames := 0
+	state := &displayState{}
 	for {
-		processNextImage(tmpDir, config, options, frames)
-		frames = frames + 1
+		processNextImage(tmpDir, config, options, state)
 	}
+}
+
+// displayState carries the bits of state that must persist between refreshes:
+// the pixel hash of the image currently on the panel (so we can skip redundant
+// updates) and the count of actual updates performed (which drives the
+// periodic ghost-clearing full refresh).
+type displayState struct {
+	LastHash string
+	Frames   int
 }
 
 // setupSignalHandling sets up handlers for SIGINT, SIGTERM, and SIGHUP
@@ -197,7 +215,7 @@ func parseCommandLineArgs() AppOptions {
 	}
 }
 
-func processNextImage(tmpDir string, config Config, options AppOptions, frames int) {
+func processNextImage(tmpDir string, config Config, options AppOptions, state *displayState) {
 	// Use defer and recover to handle any panics
 	defer func() {
 		if r := recover(); r != nil {
@@ -297,16 +315,44 @@ func processNextImage(tmpDir string, config Config, options AppOptions, frames i
 	}
 	out.Close()
 
+	// Skip the panel update when the new image is pixel-identical to the one
+	// already on screen. The server re-encodes the PNG on every poll so the
+	// file bytes differ even when the content does not; comparing decoded
+	// pixels (via a hash) is what actually tells us whether anything changed.
+	// If the image can't be decoded we fall through and display it, so an
+	// unsupported format never causes us to wrongly skip an update.
+	newHash, hashErr := hashImagePixels(filePath)
+	if hashErr != nil {
+		if options.Verbose {
+			fmt.Printf("Could not decode image for change detection (%v); displaying anyway\n", hashErr)
+		}
+	} else if newHash == state.LastHash {
+		if options.Verbose {
+			fmt.Println("Image unchanged since last update; skipping panel refresh")
+		}
+		waitForRefresh(terminal.RefreshRate)
+		return
+	}
+
 	// Display the image
-	err = displayImage(filePath, options, frames)
+	err = displayImage(filePath, options, state.Frames)
 	if err != nil {
 		fmt.Printf("Error displaying image: %v\n", err)
 		time.Sleep(60 * time.Second)
 		return
 	}
+	// Only record the hash and advance the update counter once the panel has
+	// actually been refreshed, so the periodic ghost-clearing full refresh
+	// counts real updates rather than skipped polls.
+	state.LastHash = newHash
+	state.Frames++
 
-	// Set default refresh rate if not provided
-	refreshRate := terminal.RefreshRate
+	waitForRefresh(terminal.RefreshRate)
+}
+
+// waitForRefresh sleeps until the next poll is due, waking early if the user
+// presses a key. A non-positive rate falls back to 60 seconds.
+func waitForRefresh(refreshRate int) {
 	if refreshRate <= 0 {
 		refreshRate = 60
 	}
@@ -322,13 +368,13 @@ func processNextImage(tmpDir string, config Config, options AppOptions, frames i
 		}
 	}()
 
-	out:
-	// Sleep for the refresh rate
+	// Sleep for the refresh rate, one second at a time so a keypress takes
+	// effect promptly.
 	for i := 0; i < refreshRate; i++ {
-	    time.Sleep(time.Second) // sleep one second at a time
-	    if done == 1 {
-	        break out
-	    }
+		time.Sleep(time.Second)
+		if done == 1 {
+			return
+		}
 	}
 }
 
@@ -381,6 +427,35 @@ func displayImage(imagePath string, options AppOptions, frames int) error {
 		fmt.Println("EPD update completed")
 	}
 	return nil
+}
+
+// hashImagePixels decodes the image at path and returns a hash of its raw
+// pixels. Two files with identical visual content hash the same even if their
+// encoded bytes differ (e.g. the server re-compresses the PNG on every poll),
+// which lets the caller detect that nothing has actually changed. The image is
+// normalized to RGBA first so the comparison is independent of the decoded
+// colour model, and the dimensions are folded in so differently sized images
+// can never collide.
+func hashImagePixels(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return "", err
+	}
+
+	bounds := img.Bounds()
+	rgba := image.NewRGBA(bounds)
+	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+
+	h := sha256.New()
+	fmt.Fprintf(h, "%dx%d:", bounds.Dx(), bounds.Dy())
+	h.Write(rgba.Pix)
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func loadConfig(configDir string) Config {
