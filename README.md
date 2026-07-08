@@ -1,10 +1,10 @@
 # TRMNL Display
 
-TRMNL Display is a lightweight, Linux command line application designed to display dynamic images directly on both framebuffer (LCD/HDMI) and SPI e-paper displays like the one in the TRMNL OG. It fetches images from the TRMNL API (or [your own self-hosted server](https://docs.usetrmnl.com/go/diy/byos)) and renders them directly to either a framebuffer or e-paper, providing a seamless display experience without requiring a traditional desktop environment.
+TRMNL Display is a lightweight, Linux command line application designed to display dynamic images directly on LCD/HDMI and SPI e-paper displays like the one in the TRMNL OG. It fetches images from the TRMNL API (or [your own self-hosted server](https://docs.usetrmnl.com/go/diy/byos)) and renders them directly to either a video display or e-paper, providing a seamless display experience without requiring a traditional desktop environment.
 
 ## Features
 
-- Direct framebuffer or e-paper image rendering.
+- LCD/HDMI or e-paper image rendering.
 - Supports JPEG, PNG, and BMP image formats.
 - 1-bit images support optional dark mode inversion.
 - Configurable refresh rates.
@@ -13,8 +13,7 @@ TRMNL Display is a lightweight, Linux command line application designed to displ
 ## Requirements
 
 - Linux SBC (Raspberry Pi, Orange Pi, etc)
-- Go 1.24 or higher (minimum version required)
-- framebuffer-enabled display
+- LCD/HDMI (Terminal or GUI desktop)
 - or e-paper display with SPI connection
 - Internet connection for fetching images
 
@@ -32,8 +31,8 @@ Run the provided `build.sh` script:
 ```bash
 ./build.sh
 ```
-
-You'll see a message:
+After installing the required dependent libraries and building the
+trmnl_display application, you'll see a menu and prompt: 
 ```bash
 Select your display device:
   1) framebuffer (HDMI/LCD)
@@ -41,27 +40,26 @@ Select your display device:
   3) Pimoroni Inky Impression Spectra 7.3"
 ```
 
-Input "1" or "2" or "3", then press enter. The script will complete with the following:
-
-```bash
-Compiling TRMNL go program...
-Build complete. Run trmnl-display to start.
-```
-
-## Usage
-Navigate to wherever you cloned the `trmnl-display` repository.
-
-Run the application:
-
-```bash
-./trmnl-display
-```
-
-On the first run you'll be asked to provide your Device API Key. If you're using TRMNL's native application at usetrmnl.com, go to https://usetrmnl.com/devices/current/edit and find the key under the Developer Perks section.
+Input "1" or "2" or "3", then press enter. Next you'll be asked to enter your Device API key. If you're using TRMNL's native application at usetrmnl.com, go to https://usetrmnl.com/devices/current/edit and find the key under the Developer Perks section.
 
 If you're using a [BYOS solution](https://docs.usetrmnl.com/go/diy/byos), find your API key from that implementation's settings screen. You will also need to change the `base_url` to point to your server. See **Configuration** for more details.
 
-To skip to the next item in your playlist, press the `enter` key.
+The script will complete with the following:
+
+```bash
+Build complete. Run trmnl_display to start.
+```
+
+## Usage
+
+The trmnl_display program is copied to /usr/local/bin, so you can run it from anywhere. Simply type:
+
+```bash
+trmnl_display
+```
+
+
+To skip to the next item in your playlist, press the ENTER key. To exit the program, press the ESC key.
 
 ```bash
 Keypress...skipping to next update
@@ -74,7 +72,7 @@ Optional flags:
 - Enable dark mode (inverts all pixels):
 
 ```bash
-./trmnl-display -d
+trmnl_display -d
 ```
 
 ## Background Usage
@@ -89,7 +87,7 @@ This lets you escape the command (`ctrl+c`) and close your session without termi
 
 **Background + Automatic Reboot**
 
-To restart `trmnl-display` whenever your device is turned on, access your crontab editor with `crontab -e`. You may be required to set an editor (1, 2, 3), then press enter.
+To restart `trmnl_display` whenever your device is turned on, access your crontab editor with `crontab -e`. You may be required to set an editor (1, 2, 3), then press enter.
 
 ```bash
 crontab -e
@@ -105,7 +103,7 @@ Choose 1-3 [1]:
 Inside your crontab, paste the following command. Change the path (if applicable) to point to your `trmnl-display` Installation location:
 
 ```bash
-@reboot sleep 15 && nohup /home/$(whoami)/Desktop/trmnl-display/./trmnl-display > /home/$(whoami)/.config/trmnl/logfile.log 2>&1 &
+@reboot sleep 15 && nohup trmnl_display > /home/$(whoami)/.config/trmnl/logfile.log 2>&1 &
 ```
 
 The `sleep 15` intends to ensure your network configuration is ready before `trmnl-display` makes an HTTP request to your playlist.
