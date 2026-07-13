@@ -55,6 +55,15 @@ set -e
       git clone https://github.com/bitbank2/JPEGDEC
   fi
 
+  if [ -d $HOME/Projects/trmnl_lib ]; then
+      echo "trmnl_lib already cloned, updating to latest..."
+      cd trmnl_lib
+      git pull
+      cd ..
+  else
+      git clone https://github.com/usetrmnl/trmnl_lib
+  fi
+
   cd PNGdec/linux
   make
   cd ../../JPEGDEC/linux
