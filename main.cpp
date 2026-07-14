@@ -17,7 +17,7 @@
 //===========================================================================
 //
 // Enable SHOW_DETAILS for debugging only
-//#define SHOW_DETAILS
+#define SHOW_DETAILS
 #ifndef __MACH__
 #include <bb_epaper.h>
 #endif // __MACH__
@@ -40,6 +40,8 @@ SDL_Surface *canvas, *winSurface;
 BBEPAPER bbep;
 #endif // __MACH__
 volatile bool bQuit = false;
+static int iCount = 0; // number of updates
+static bool bCanDoPartial = false;
 bool bSSH = false; // flag indicating if we're running from an SSH session
 char szKey[64], szURL[128];
 int iAdapter, iMode;
@@ -425,11 +427,24 @@ void ShowEPDImage(void)
             iMode = REFRESH_FULL;
         }
         if (iBpp == 1 && !(bbep.capabilities() & (BBEP_3COLOR | BBEP_4COLOR | BBEP_7COLOR | BBEP_4GRAY))) {
-            bbep.writePlane((iMode == REFRESH_PARTIAL) ? PLANE_FALSE_DIFF : PLANE_DUPLICATE, iInvert);
+            if (bCanDoPartial) {
+                if ((iCount & 3) == 3) {
+                    iMode = REFRESH_FAST; // clean up any ghosting
+                } else {
+                    iMode = REFRESH_PARTIAL;
+                }
+                bbep.writePlane(PLANE_0, iInvert);
+            } else {
+                bbep.writePlane(PLANE_DUPLICATE, iInvert);
+            }
             bbep.refresh(iMode);
+            bCanDoPartial = true; // for the next 1-bit image
+            iCount++;
         } else { // 3-color, 4-color, or 4 gray mode
             bbep.writePlane(PLANE_BOTH, iInvert);
             bbep.refresh(iMode); // some 4-color panels support fast update
+            bCanDoPartial = false;
+            iCount = 0;
         }
 #ifdef SHOW_DETAILS
         printf("Refresh complete, sleeping panel.\n");
@@ -973,6 +988,8 @@ int rc, iSize;
                     if (system("sudo dtparam spi=on") == -1) { // problem
                         printf("Error trying to enable SPI!\n");
                         return;
+                    } else {
+                        printf("SPI enabled\n");
                     }
                     usleep(1000000); // allow time for it to start
                 }
