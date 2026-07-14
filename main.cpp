@@ -17,7 +17,7 @@
 //===========================================================================
 //
 // Enable SHOW_DETAILS for debugging only
-#define SHOW_DETAILS
+//#define SHOW_DETAILS
 #ifndef __MACH__
 #include <bb_epaper.h>
 #endif // __MACH__
