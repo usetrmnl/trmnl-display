@@ -86,12 +86,13 @@ set -e
   echo "  3) Pimoroni Inky Impression Spectra 7.3"
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
-  PANEL2="EP75_800x480_4GRAY_GEN2"
+  PANEL2="EP75_800x480_4GRAY"
   case $n in
-          1) PANEL="EP75_800x480_GEN2"
+          1) PANEL="EP75_800x480"
              JADAPTER="framebuffer";;
           2) JADAPTER="waveshare_2"
-             PANEL="EP75_800x480_GEN2";;
+             echo "Set switches to: Interface Config (0), Display Config (B)"
+             PANEL="EP75_800x480";;
           3) JADAPTER="pimoroni"
              PANEL2="EP73_SPECTRA_800x480"
              PANEL="EP73_SPECTRA_800x480";;
