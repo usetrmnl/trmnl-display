@@ -17,7 +17,7 @@
 //===========================================================================
 //
 // Enable SHOW_DETAILS for debugging only
-//#define SHOW_DETAILS
+#define SHOW_DETAILS
 #ifndef __MACH__
 #include <bb_epaper.h>
 #endif // __MACH__
@@ -68,9 +68,9 @@ enum {
 
 typedef struct tagAdapter
 {
-  uint8_t u8DC, u8RST, u8BUSY, u8CS, u8PWR, u8SPI;
+  uint8_t u8DC, u8RST, u8BUSY, u8CS, u8PWR, u8SPI, u8CS2;
 } ADAPTER;
-const char *szAdapters[] = {"framebuffer", "pimoroni", "waveshare_2", "waveshare_2_opi_rv2", NULL};
+const char *szAdapters[] = {"framebuffer", "pimoroni", "waveshare_2", "waveshare_2_opi_rv2", "pimoroni_2", NULL};
 const char *szModes[] = {"full", "fast", "partial", NULL};
 const char *szStretch[] = {"none", "fill", "aspectfill", NULL};
 const char *szPanels[] = {
@@ -95,14 +95,19 @@ const char *szPanels[] = {
     "EP213YR_122x250", "EP37YR_240x416", "EP35YR_184x384", // 54-56
     "EP397YR_800x480", "EP154YR_200x200", "EP266YR2_184x360", // 57-59
     "EP42YR_400x300", "EP215YR_160x296", "EP1085_1360x480", // 60-62
-    "EP31_240x320", "EP75YR_800x480", // 63-64
+    "EP31_240x320", "EP75YR_800x480", "EP154_200x200_4GRAY", // 63-65
+    "EP42B_400x300_4GRAY", "EP397_800x480", "EP397_800x480_4GRAY", // 66-68
+    "EP368_792x528", "EP368_792x528_4GRAY", "EP213ZZ_122x250", // 69-72
+    "EP40_SPECTRA_400x600", "EP27_176x264", "EP27_176x264_4GRAY", // 73-75
+    "EP426B_800x480", "EP583_648x480_4GRAY", "EP133_SPECTRA_1200x1600", // 76-78
     NULL // must be last entry
 };
-// DC, RST, BUSY, CS, PWR
-ADAPTER adapters[] = {{0,0,0,0,0,0}, // framebuffer
-                       {22, 27, 17, 8, 0xff, 0}, // Pimoroni
-                       {25, 17, 24, 8, 18, 0}, // Waveshare 2.x
-                       {49, 71, 92, 76, 70, 3}, // Waveshare 2.x on OPi RV2
+// DC, RST, BUSY, CS, PWR, SPI, CS2
+ADAPTER adapters[] = {{0,0,0,0,0,0,0}, // framebuffer
+                       {22, 27, 17, 8, 0xff, 0, 0}, // Pimoroni
+                       {25, 17, 24, 8, 18, 0, 0}, // Waveshare 2.x
+                       {49, 71, 92, 76, 70, 3, 0}, // Waveshare 2.x on OPi RV2
+                       {22, 27, 17, 26, 0xff, 0, 16} // Pimoroni_2
                       };
 //
 // Find the index value of a string within a list
@@ -996,13 +1001,22 @@ int rc, iSize;
             }
             // This MUST be set before initializing the I/O so that the initial
             // command sequence is sent to properly prepare the EPD for receiving data
-            bbep.setPanelType((iPanel1Bit == -1) ? iPanel2Bit : iPanel1Bit);
+            rc = bbep.setPanelType((iPanel1Bit == -1) ? iPanel2Bit : iPanel1Bit);
+#ifdef SHOW_DETAILS
+            printf("setPanelType returned %d\n", rc);
+#endif            
             bbep.initIO(adapters[iAdapter].u8DC, adapters[iAdapter].u8RST, adapters[iAdapter].u8BUSY, adapters[iAdapter].u8CS, adapters[iAdapter].u8SPI, 0, 8000000);
+            if (adapters[iAdapter].u8CS2 != 0) {
+                bbep.setCS2(adapters[iAdapter].u8CS2);
+            }
             bbep.allocBuffer(true); // always allocate 2 memory planes
-            if (bbep.width() < bbep.height()) {
+            if (bbep.width() < bbep.height() && bbep.width() < 800) {
                     bbep.setRotation(270);
             }
             trmnl.setDisplaySize(bbep.width(), bbep.height()); 
+#ifdef SHOW_DETAILS
+            printf("Setting display size to %d x %d\n", bbep.width(), bbep.height());
+#endif
     while (!bQuit) {
         fd_set set;
         struct timeval timeout = {0, 1000}; // 1ms timeout to keep SDL responsive

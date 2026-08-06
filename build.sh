@@ -84,6 +84,7 @@ set -e
   echo "  1) framebuffer (HDMI/LCD)"
   echo "  2) Waveshare e-paper HAT"
   echo "  3) Pimoroni Inky Impression Spectra 7.3"
+  echo "  4) Pimoroni Inky Impression Spectra 13.3"
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
   PANEL2="EP75_800x480_4GRAY"
@@ -96,6 +97,9 @@ set -e
           3) JADAPTER="pimoroni"
              PANEL2="EP73_SPECTRA_800x480"
              PANEL="EP73_SPECTRA_800x480";;
+          4) JADAPTER="pimoroni_2"
+             PANEL2="EP133_SPECTRA_1200x1600"
+             PANEL="EP133_SPECTRA_1200x1600";;
           *) echo "Invalid option" ; exit 1;;
   esac
   JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"$PANEL\",\n        \"panel_2bit\": \"$PANEL2\"\n}\n")
