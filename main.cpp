@@ -445,6 +445,9 @@ void ShowEPDImage(void)
             bbep.refresh(iMode);
             bCanDoPartial = true; // for the next 1-bit image
             iCount++;
+        } else if (bbep.capabilities() & BBEP_7COLOR) { // Spectra6
+            bbep.writePlane();
+            bbep.refresh(REFRESH_FULL);
         } else { // 3-color, 4-color, or 4 gray mode
             bbep.writePlane(PLANE_BOTH, iInvert);
             bbep.refresh(iMode); // some 4-color panels support fast update
@@ -1005,10 +1008,10 @@ int rc, iSize;
 #ifdef SHOW_DETAILS
             printf("setPanelType returned %d\n", rc);
 #endif            
-            bbep.initIO(adapters[iAdapter].u8DC, adapters[iAdapter].u8RST, adapters[iAdapter].u8BUSY, adapters[iAdapter].u8CS, adapters[iAdapter].u8SPI, 0, 8000000);
             if (adapters[iAdapter].u8CS2 != 0) {
                 bbep.setCS2(adapters[iAdapter].u8CS2);
             }
+            bbep.initIO(adapters[iAdapter].u8DC, adapters[iAdapter].u8RST, adapters[iAdapter].u8BUSY, adapters[iAdapter].u8CS, adapters[iAdapter].u8SPI, 0, 8000000);
             bbep.allocBuffer(true); // always allocate 2 memory planes
             if (bbep.width() < bbep.height() && bbep.width() < 800) {
                     bbep.setRotation(270);
