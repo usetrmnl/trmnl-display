@@ -17,9 +17,10 @@
 //===========================================================================
 //
 // Enable SHOW_DETAILS for debugging only
-#define SHOW_DETAILS
+//#define SHOW_DETAILS
 #ifndef __MACH__
 #include <bb_epaper.h>
+#include <FastEPD.h>
 #endif // __MACH__
 #include <PNGdec.h>
 #include <JPEGDEC.h>
@@ -38,6 +39,7 @@ SDL_Window *win;
 SDL_Surface *canvas, *winSurface;
 #ifndef __MACH__
 BBEPAPER bbep;
+FASTEPD epaper;
 #endif // __MACH__
 volatile bool bQuit = false;
 static int iCount = 0; // number of updates
@@ -63,14 +65,16 @@ enum {
 	ADAPTER_FRAMEBUFFER = 0,
 	ADAPTER_PIMORONI,
 	ADAPTER_WAVESHARE2,
-	ADAPTER_WAVESHRRE2_RV2
+	ADAPTER_WAVESHARE2_RV2,
+        ADAPTER_PIMORONI_2, // Inky Impression 13.3
+        ADAPTER_WAVESHARE_IT8951, // Waveshare IT8951 HAT
 };
 
 typedef struct tagAdapter
 {
   uint8_t u8DC, u8RST, u8BUSY, u8CS, u8PWR, u8SPI, u8CS2;
 } ADAPTER;
-const char *szAdapters[] = {"framebuffer", "pimoroni", "waveshare_2", "waveshare_2_opi_rv2", "pimoroni_2", NULL};
+const char *szAdapters[] = {"framebuffer", "pimoroni", "waveshare_2", "waveshare_2_opi_rv2", "pimoroni_2", "waveshare_it8951", NULL};
 const char *szModes[] = {"full", "fast", "partial", NULL};
 const char *szStretch[] = {"none", "fill", "aspectfill", NULL};
 const char *szPanels[] = {
@@ -100,6 +104,7 @@ const char *szPanels[] = {
     "EP368_792x528", "EP368_792x528_4GRAY", "EP213ZZ_122x250", // 69-72
     "EP40_SPECTRA_400x600", "EP27_176x264", "EP27_176x264_4GRAY", // 73-75
     "EP426B_800x480", "EP583_648x480_4GRAY", "EP133_SPECTRA_1200x1600", // 76-78
+    "IT8951_1872x1440", // FastEPD panels start here
     NULL // must be last entry
 };
 // DC, RST, BUSY, CS, PWR, SPI, CS2
@@ -107,7 +112,8 @@ ADAPTER adapters[] = {{0,0,0,0,0,0,0}, // framebuffer
                        {22, 27, 17, 8, 0xff, 0, 0}, // Pimoroni
                        {25, 17, 24, 8, 18, 0, 0}, // Waveshare 2.x
                        {49, 71, 92, 76, 70, 3, 0}, // Waveshare 2.x on OPi RV2
-                       {22, 27, 17, 26, 0xff, 0, 16} // Pimoroni_2
+                       {22, 27, 17, 26, 0xff, 0, 16}, // Pimoroni_2
+                       {0xff, 17, 24, 8, 0xff, 0, 0}, // Waveshare IT8951
                       };
 //
 // Find the index value of a string within a list
@@ -358,9 +364,41 @@ int rc;
 //
 void ShowEPDImage(void)
 {
-	int x, y, iPlaneOffset, iSrcPitch, iDestPitch;
+	int x, y, iPlaneOffset, iSrcPitch=0, iDestPitch=0;
 	uint8_t *s, *d, uc=0;
 	s = pBitmap;
+        if (iAdapter == ADAPTER_WAVESHARE_IT8951) { // use FastEPD
+            if (iBpp > 4) {
+               iBpp = ConvertBpp(s, iWidth, iHeight, iBpp, pPalette);
+            }
+            d = (uint8_t *)epaper.currentBuffer();
+            switch (iBpp) {
+                case 1:
+                    epaper.setMode(BB_MODE_1BPP);
+                    iDestPitch = (epaper.width()+7)/8;
+                    iSrcPitch = (iWidth+7)/8;
+                    break;
+                case 2:
+                    epaper.setMode(BB_MODE_2BPP);
+                    iDestPitch = (epaper.width()+3)/4;
+                    iSrcPitch = (iWidth+3)/4;
+                    break;
+                case 4:
+                    epaper.setMode(BB_MODE_4BPP);
+                    iDestPitch = (epaper.width()+1)/2;
+                    iSrcPitch = (iWidth+1)/2;
+                    break;
+            }
+            for (y=0; y<iHeight; y++) {
+                memcpy(d, s, iSrcPitch);
+                s += iSrcPitch;
+                d += iDestPitch;
+            }
+            epaper.fullUpdate();
+            epaper.einkPower(0);
+            return; // done
+        } // FastEPD path
+
 	d = (uint8_t *)bbep.getBuffer();
 	iDestPitch = (bbep.width()+7)/8;
         // Convert the source bitmap to 1 or 2-bit grayscale
@@ -1002,24 +1040,42 @@ int rc, iSize;
                     usleep(1000000); // allow time for it to start
                 }
             }
-            // This MUST be set before initializing the I/O so that the initial
-            // command sequence is sent to properly prepare the EPD for receiving data
-            rc = bbep.setPanelType((iPanel1Bit == -1) ? iPanel2Bit : iPanel1Bit);
+            if (iAdapter == ADAPTER_WAVESHARE_IT8951) { // use FastEPD
+                rc = epaper.initIT8951(adapters[iAdapter].u8SPI, 0, 0, adapters[iAdapter].u8CS, adapters[iAdapter].u8BUSY, adapters[iAdapter].u8RST, -1, -1);
+                if (rc != BBEP_SUCCESS) {
+                    printf("initIT8951 returned error: %d\n", rc);
+                    return;
+                }
+                rc = epaper.setPanelSize(BBEP_DISPLAY_ED078KC2);
+                if (rc != BBEP_SUCCESS) {
+                   printf("setPanelSize returned %d\n", rc);
+                   return;
+                }
+                epaper.fillScreen(BBEP_WHITE);
+                trmnl.setDisplaySize(epaper.width(), epaper.height());  
 #ifdef SHOW_DETAILS
-            printf("setPanelType returned %d\n", rc);
-#endif            
-            if (adapters[iAdapter].u8CS2 != 0) {
-                bbep.setCS2(adapters[iAdapter].u8CS2);
-            }
-            bbep.initIO(adapters[iAdapter].u8DC, adapters[iAdapter].u8RST, adapters[iAdapter].u8BUSY, adapters[iAdapter].u8CS, adapters[iAdapter].u8SPI, 0, 8000000);
-            bbep.allocBuffer(true); // always allocate 2 memory planes
-            if (bbep.width() < bbep.height() && bbep.width() < 800) {
-                    bbep.setRotation(270);
-            }
-            trmnl.setDisplaySize(bbep.width(), bbep.height()); 
-#ifdef SHOW_DETAILS
-            printf("Setting display size to %d x %d\n", bbep.width(), bbep.height());
+                printf("Setting display size to %d x %d\n", epaper.width(), epaper.height());
 #endif
+            } else { // use bb_epaper
+                // This MUST be set before initializing the I/O so that the initial
+                // command sequence is sent to properly prepare the EPD for receiving data
+                rc = bbep.setPanelType((iPanel1Bit == -1) ? iPanel2Bit : iPanel1Bit);
+#ifdef SHOW_DETAILS
+                printf("setPanelType returned %d\n", rc);
+#endif            
+                if (adapters[iAdapter].u8CS2 != 0) {
+                    bbep.setCS2(adapters[iAdapter].u8CS2);
+                }
+                bbep.initIO(adapters[iAdapter].u8DC, adapters[iAdapter].u8RST, adapters[iAdapter].u8BUSY, adapters[iAdapter].u8CS, adapters[iAdapter].u8SPI, 0, 8000000);
+                bbep.allocBuffer(true); // always allocate 2 memory planes
+                if (bbep.width() < bbep.height() && bbep.width() < 800) {
+                    bbep.setRotation(270);
+                }
+                trmnl.setDisplaySize(bbep.width(), bbep.height());  
+#ifdef SHOW_DETAILS
+                printf("Setting display size to %d x %d\n", bbep.width(), bbep.height());
+#endif
+            } // bb_epaper
     while (!bQuit) {
         fd_set set;
         struct timeval timeout = {0, 1000}; // 1ms timeout to keep SDL responsive
@@ -1063,6 +1119,9 @@ int rc, iSize;
     } // while (!bQuit)
     if (adapters[iAdapter].u8PWR != 0xff) {
         digitalWrite(adapters[iAdapter].u8PWR, 0); // disable power to EPD
+    }
+    if (iAdapter == ADAPTER_WAVESHARE_IT8951) {
+        epaper.deInit(); // shut down the board and I/O
     }
 } /* TRMNL_EPAPER() */
 #endif // __MACH__

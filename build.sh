@@ -37,6 +37,14 @@ set -e
   else
       git clone https://github.com/bitbank2/bb_temperature
   fi
+  if [ -d $HOME/Projects/FastEPD ]; then
+      echo "FastEPD already cloned, updating to latest..."
+      cd FastEPD
+      git pull
+      cd ..
+  else
+      git clone https://github.com/bitbank2/FastEPD
+  fi
   if [ -d $HOME/Projects/PNGdec ]; then
       echo "PNGdec already cloned, updating to latest..."
       cd PNGdec
@@ -66,6 +74,8 @@ set -e
 
   cd PNGdec/linux
   make
+  cd ../../FastEPD/Linux
+  make
   cd ../../JPEGDEC/linux
   make
   cd ../../bb_epaper/rpi
@@ -82,9 +92,10 @@ set -e
 
   echo "Select your display device:"
   echo "  1) framebuffer (HDMI/LCD)"
-  echo "  2) Waveshare e-paper HAT"
+  echo "  2) Waveshare SPI e-paper HAT"
   echo "  3) Pimoroni Inky Impression Spectra 7.3"
   echo "  4) Pimoroni Inky Impression Spectra 13.3"
+  echo "  5) Waveshare IT8951 7.8 or 10.3 1872x1440"
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
   PANEL2="EP75_800x480_4GRAY"
@@ -100,6 +111,9 @@ set -e
           4) JADAPTER="pimoroni_2"
              PANEL2="EP133_SPECTRA_1200x1600"
              PANEL="EP133_SPECTRA_1200x1600";;
+          5) JADAPTER="waveshare_it8951"
+             PANEL2="IT8951_1872x1440"
+             PANEL="IT8951_1872x1440";;
           *) echo "Invalid option" ; exit 1;;
   esac
   JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"$PANEL\",\n        \"panel_2bit\": \"$PANEL2\"\n}\n")
