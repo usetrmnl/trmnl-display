@@ -1,6 +1,6 @@
 # TRMNL Display
 
-TRMNL Display is a lightweight, Linux command line application designed to display dynamic images directly on LCD/HDMI and SPI e-paper displays like the one in the TRMNL OG. It fetches images from the TRMNL API (or [your own self-hosted server](https://docs.usetrmnl.com/go/diy/byos)) and renders them directly to either a video display or e-paper, providing a seamless display experience without requiring a traditional desktop environment.
+TRMNL Display is a lightweight, Linux command line application designed to display dynamic images directly on LCD/HDMI and SPI e-paper displays like the one in the TRMNL OG. It fetches images from the TRMNL API (or [your own self-hosted server](https://docs.trmnl.com/go/diy/byos)) and renders them directly to either a video display or e-paper, providing a seamless display experience without requiring a traditional desktop environment.
 
 ## Features
 
@@ -36,13 +36,15 @@ trmnl_display application, you'll see a menu and prompt:
 ```bash
 Select your display device:
   1) framebuffer (HDMI/LCD)
-  2) Waveshare e-paper HAT
-  3) Pimoroni Inky Impression Spectra 7.3"
+  2) Waveshare SPI e-paper HAT
+  3) Pimoroni Inky Impression Spectra 7.3
+  4) Pimoroni Inky Impression Spectra 13.3
+  5) Waveshare IT8951 7.8 or 10.3 1872x1440
 ```
+  
+Input a value (number 1-5), then press enter. Next you'll be asked to enter your Device API key. If you're using TRMNL's native application, visit [https://trmnl.com/devices/current/edit](https://trmnl.com/devices/current/developer/edit) to find it.
 
-Input "1" or "2" or "3", then press enter. Next you'll be asked to enter your Device API key. If you're using TRMNL's native application at usetrmnl.com, go to https://usetrmnl.com/devices/current/edit and find the key under the Developer Perks section.
-
-If you're using a [BYOS solution](https://docs.usetrmnl.com/go/diy/byos), find your API key from that implementation's settings screen. You will also need to change the `base_url` to point to your server. See **Configuration** for more details.
+If you're using a [BYOS solution](https://docs.trmnl.com/go/diy/byos), find your API key from that implementation's settings screen. You will also need to change the `base_url` to point to your server. See **Configuration** for more details.
 
 The script will complete with the following:
 
