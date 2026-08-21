@@ -682,7 +682,7 @@ int decodeImage(uint8_t *pData, int iSize) {
             return 0;
         } else {
 #ifdef SHOW_DETAILS
-            printf("PNG decode succeeded\n");
+            printf("PNG decode succeeded, size=%dx%d, %d bpp, pixel type: %d\n", iWidth, iHeight, iBpp, iPixelType);
 #endif
         }
     }
