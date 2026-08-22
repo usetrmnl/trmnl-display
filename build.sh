@@ -97,6 +97,7 @@ set -e
   echo "  4) Pimoroni Inky Impression Spectra 13.3"
   echo "  5) Waveshare IT8951 7.8 or 10.3 1872x1440"
   echo "  6) Waveshare 7.3 Spectra6 800x480"
+  echo "  7) Waveshare 2.13 B/W 250x122"
   read n
   JSTART=$(printf "{\n        \"adapter\": \"")
   PANEL2="EP75_800x480_4GRAY"
@@ -105,6 +106,7 @@ set -e
              JADAPTER="framebuffer";;
           2) JADAPTER="waveshare_2"
              echo "  Set switches to: Interface Config (0), Display Config (A)"
+             PANEL2="EP75_800x480_4GRAY"
              PANEL="EP75_800x480";;
           3) JADAPTER="pimoroni"
              PANEL2="EP73_SPECTRA_800x480"
@@ -116,7 +118,11 @@ set -e
              PANEL2="IT8951_1872x1440"
              PANEL="IT8951_1872x1440";;
           6) JADAPTER="waveshare_2"
+             PANEL2="EP73_SPECTRA_800x480"
              PANEL="EP73_SPECTRA_800x480";;
+          7) JADAPTER="waveshare_2"
+             PANEL2="EP213B_122x250_4GRAY"
+             PANEL="EP213B_122x250";;
           *) echo "Invalid option" ; exit 1;;
   esac
   JEND=$(printf "\",\n        \"stretch\": \"aspectfill\",\n        \"panel_1bit\": \"$PANEL\",\n        \"panel_2bit\": \"$PANEL2\"\n}\n")

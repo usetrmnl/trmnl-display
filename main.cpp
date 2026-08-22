@@ -17,7 +17,7 @@
 //===========================================================================
 //
 // Enable SHOW_DETAILS for debugging only
-//#define SHOW_DETAILS
+#define SHOW_DETAILS
 #ifndef __MACH__
 #include <bb_epaper.h>
 #include <FastEPD.h>
@@ -104,6 +104,7 @@ const char *szPanels[] = {
     "EP368_792x528", "EP368_792x528_4GRAY", "EP213ZZ_122x250", // 69-72
     "EP40_SPECTRA_400x600", "EP27_176x264", "EP27_176x264_4GRAY", // 73-75
     "EP426B_800x480", "EP583_648x480_4GRAY", "EP133_SPECTRA_1200x1600", // 76-78
+    "EP213B_122x250_4GRAY",
     "IT8951_1872x1440", // FastEPD panels start here
     NULL // must be last entry
 };
@@ -439,8 +440,10 @@ void ShowEPDImage(void)
 		d += iDestPitch;
 	    }
 	} else if (!(bbep.capabilities() & (BBEP_7COLOR | BBEP_3COLOR | BBEP_4COLOR))) { // >=2 bpp
+printf("Splitting into 2 planes\n");
 	    iPlaneOffset = iDestPitch * iHeight; // offset to 2nd memory plane
 	    iSrcPitch = (iWidth+3)/4; // every source pixel depth will become 2-bpp
+printf("srcpitch = %d, destpitch = %d, iPlaneOffset = %d\n", iSrcPitch, iDestPitch, iPlaneOffset);
 	    for (y=0; y<iHeight; y++) {
 	    // Split the 2-bit packed pixels into 2 bit planes for the EPD
 		for (x=0; x<iWidth/4; x+=2) { // work with pairs of bytes
@@ -852,6 +855,7 @@ unsigned char GetBWYRPixel(int r, int g, int b)
 int ConvertBpp(uint8_t *pBMP, int w, int h, int iBpp, uint8_t *palette)
 {
     int gray, r=0, g=0, b=0, x, y, iDelta, iPitch, iDestPitch, iDestBpp;
+    const int iSrcBpp = iBpp;
     uint8_t *s, *d, *pPal, u8, count;
 
     if (iPanel2Bit == -1) { // only 1 or 4 bit panel available
@@ -895,7 +899,11 @@ int ConvertBpp(uint8_t *pBMP, int w, int h, int iBpp, uint8_t *palette)
     // Overwrite the source image with the converted image since it will be smaller or
     // equal in size to the original. This is needed even for 2-bit images which may
     // use a palette with random color entries.
-    iPitch = (w * iBpp)/8;    
+    if (iSrcBpp == iBpp) { // no change in bpp
+        iPitch = iDestPitch;
+    } else {
+        iPitch = (w * iBpp)/8;
+    }
     iDelta = iBpp/8;
     for (y=0; y<h; y++) {
         s = &pBMP[iPitch * y];
