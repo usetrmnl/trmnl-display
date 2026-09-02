@@ -17,7 +17,7 @@
 //===========================================================================
 //
 // Enable SHOW_DETAILS for debugging only
-#define SHOW_DETAILS
+//#define SHOW_DETAILS
 #ifndef __MACH__
 #include <bb_epaper.h>
 #include <FastEPD.h>
@@ -855,10 +855,9 @@ unsigned char GetBWYRPixel(int r, int g, int b)
 int ConvertBpp(uint8_t *pBMP, int w, int h, int iBpp, uint8_t *palette)
 {
     int gray, r=0, g=0, b=0, x, y, iDelta, iPitch, iDestPitch, iDestBpp;
-    const int iSrcBpp = iBpp;
     uint8_t *s, *d, *pPal, u8, count;
 
-    if (iPanel2Bit == -1) { // only 1 or 4 bit panel available
+    if (iPanel2Bit == EP_PANEL_UNDEFINED) { // only 1 or 4 bit panel available
         iDestBpp = (bbep.capabilities() & BBEP_7COLOR) ? 4 : 1;
     } else {
         iDestBpp = 2;
@@ -899,11 +898,7 @@ int ConvertBpp(uint8_t *pBMP, int w, int h, int iBpp, uint8_t *palette)
     // Overwrite the source image with the converted image since it will be smaller or
     // equal in size to the original. This is needed even for 2-bit images which may
     // use a palette with random color entries.
-    if (iSrcBpp == iBpp) { // no change in bpp
-        iPitch = iDestPitch;
-    } else {
-        iPitch = (w * iBpp)/8;
-    }
+    iPitch = (w * iBpp)/8;
     iDelta = iBpp/8;
     for (y=0; y<h; y++) {
         s = &pBMP[iPitch * y];
@@ -1067,7 +1062,7 @@ int rc, iSize;
             } else { // use bb_epaper
                 // This MUST be set before initializing the I/O so that the initial
                 // command sequence is sent to properly prepare the EPD for receiving data
-                rc = bbep.setPanelType((iPanel1Bit == -1) ? iPanel2Bit : iPanel1Bit);
+                rc = bbep.setPanelType((iPanel1Bit == EP_PANEL_UNDEFINED) ? iPanel2Bit : iPanel1Bit);
 #ifdef SHOW_DETAILS
                 printf("setPanelType returned %d\n", rc);
 #endif            
@@ -1277,7 +1272,7 @@ char szFile[256];
                     if (cJSON_HasObjectItem(pJSON, "panel_1bit")) {
                          pItem = cJSON_GetObjectItem(pJSON, "panel_1bit");
                          iPanel1Bit = FindItemName(szPanels, pItem->valuestring, "1-bit panel");
-                         if (iPanel1Bit >= 0) {
+                         if (iPanel1Bit > 0) {
 #ifdef SHOW_DETAILS
                              printf("panel1bit = %d (%s)\n", iPanel1Bit, szPanels[iPanel1Bit]);
 #endif
